@@ -1,6 +1,6 @@
 # Demo PR fixtures
 
-Toy code (nothing real) for trying Pretty PR Review on a pull request where every case is known: one demo in Python ([PR #1](https://github.com/stodoran/pretty_pr_extension/pull/1)) and one in TypeScript (see [below](#typescript)).
+Toy code (nothing real) for trying Pretty PR Review on a pull request where every case is known: one demo in Python ([PR #1](https://github.com/stodoran/pretty_pr_extension/pull/1)) and one in TypeScript ([PR #2](https://github.com/stodoran/pretty_pr_extension/pull/2), see [below](#typescript)).
 
 ## Python
 

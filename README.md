@@ -4,7 +4,7 @@ Chrome extension (MV3, WXT + TypeScript) for calmer GitHub PR reviews. Works wit
 
 ## Features
 
-Screenshots are from the [demo PR](https://github.com/stodoran/pretty_pr_extension/pull/1), which has one of each case (see [demo/README.md](demo/README.md)).
+Screenshots are from the Python [demo PR](https://github.com/stodoran/pretty_pr_extension/pull/1), which has one of each case; [PR #2](https://github.com/stodoran/pretty_pr_extension/pull/2) is the same for TypeScript (see [demo/README.md](demo/README.md)).
 
 ### Moved code
 
