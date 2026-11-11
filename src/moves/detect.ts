@@ -182,7 +182,7 @@ export function detectMoves(files: FileVersions[], options: Partial<DetectOption
       const j = jaccard(r.shingles, a.shingles);
       if (j < 0.2) continue;
       // Bound the O(n·m) LCS for huge classes; shingle overlap is a fair stand-in there.
-      const score = r.norm.length * a.norm.length > MAX_LCS_CELLS ? j : lcsSimilarity(r.norm, a.norm);
+      const score = r.norm.length * a.norm.length > MAX_LCS_CELLS ? Math.min(j, 0.99) : lcsSimilarity(r.norm, a.norm); // approximate: never 'unchanged'
       if (score >= opts.minSimilarity) pairs.push({ r, a, score });
     }
   }

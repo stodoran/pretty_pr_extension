@@ -29,9 +29,8 @@ export function createReactUiAdapter(): DiffDomAdapter {
       const heading = headingId ? document.getElementById(headingId) : null;
       const text = (heading?.querySelector('code') ?? heading)?.textContent?.replace(INVISIBLE, '').trim();
       if (!text) return null;
-      // Renames render as "old/path → new/path"; we want the new path.
-      const parts = text.split(/\s+→\s+/);
-      return parts.length <= 2 ? (parts.at(-1) ?? null) : null; // ambiguous rename header: don't guess
+      // Renames render as "old → new" in free text; don't guess which part is the path.
+      return text.includes('→') ? null : text;
     },
     viewedToggle,
     isViewed(el) {
