@@ -1,5 +1,5 @@
 import type { DiffFile, Hunk } from '../moves/unified-diff';
-import { langFor, lex, type Lang, type Tok } from './lexer';
+import { isPython, lex, type Tok } from './lexer';
 
 /**
  * Finds changed lines that are formatting only: whitespace, line wrapping,
@@ -47,12 +47,14 @@ const MAX_LCS_CELLS = 4_000_000;
 export function classifyFile(file: DiffFile): FileFormatting | null {
   const path = file.newPath ?? file.oldPath;
   if (!path || file.binary || !file.hunks.length) return null;
-  const lang = langFor(path);
-  if (!lang) return null;
+  if (!isPython(path)) return null;
 
   const out: FileFormatting = { path, left: [], right: [], blocks: [], changed: 0, formatting: 0, whole: false };
-  for (const h of file.hunks) classifyHunk(h, lang, out);
-  out.whole = (file.status === 'modified' || file.status === 'renamed') && out.changed > 0 && out.formatting === out.changed;
+  let unsure = false;
+  for (const h of file.hunks) if (classifyHunk(h, out)) unsure = true;
+  // `whole` auto-views the file, so only when nothing else could hide in it:
+  // no rename or mode change, and no hunk that needed the docstring guess.
+  out.whole = file.status === 'modified' && !file.modeChange && !unsure && out.changed > 0 && out.formatting === out.changed;
   return out;
 }
 
@@ -61,7 +63,7 @@ interface Side {
   toks: Tok[];
   /** Line indexes that changed for real (see `markLines`). */
   real: Set<number>;
-  /** Line indexes whose only change is their indentation (Python). */
+  /** Line indexes whose only change is their indentation. */
   reindent: Set<number>;
   /** Line indexes whose only change is in comments. */
   comment: Set<number>;
@@ -78,7 +80,7 @@ function side(h: Hunk, which: '-' | '+'): Side {
 }
 
 /** A string token that reached the end of the input without its closing quote. */
-const unclosed = (toks: Tok[]) => toks.some((t) => t.key.startsWith('\u0002') && t.key.slice(1, t.key.indexOf('\u0002', 1)).endsWith('…'));
+const isUnclosed = (t: Tok) => t.key.startsWith('\u0002') && t.key.slice(1, t.key.indexOf('\u0002', 1)).endsWith('…');
 
 /**
  * Lexes and aligns both sides. A Python hunk often starts inside a docstring
@@ -87,11 +89,11 @@ const unclosed = (toks: Tok[]) => toks.some((t) => t.key.startsWith('\u0002') &&
  * when a string is left open, also lex as if one were open at the start, and
  * keep whichever reading aligns best (fewest unmatched tokens).
  */
-function lexAndAlign(old: Side, neu: Side, lang: Lang): { a: Int32Array; b: Int32Array } {
+function lexAndAlign(old: Side, neu: Side): { a: Int32Array; b: Int32Array; guessed: boolean } {
   const run = (s: Side, open: string | null) => {
     const texts = s.lines.map((l) => l.text);
-    if (!open) return lex(texts, lang);
-    return lex([open, ...texts], lang).map((t) => ({ ...t, line: Math.max(0, t.line - 1), endLine: Math.max(0, t.endLine - 1) }));
+    if (!open) return lex(texts);
+    return lex([open, ...texts]).map((t) => ({ ...t, line: Math.max(0, t.line - 1), endLine: Math.max(0, t.endLine - 1) }));
   };
   const attempt = (open: string | null) => {
     const toks = { old: run(old, open), neu: run(neu, open) };
@@ -100,8 +102,15 @@ function lexAndAlign(old: Side, neu: Side, lang: Lang): { a: Int32Array; b: Int3
     const p = alignHunk(old, neu);
     return { toks, p, unmatched: [...p.a, ...p.b].filter((x) => x < 0).length };
   };
-  let best = attempt(null);
-  if (lang.python && (unclosed(best.toks.old) || unclosed(best.toks.neu))) {
+  const plain = attempt(null);
+  let best = plain;
+  // Only when the open string swallows the changes: one left open after the
+  // last change is just a hunk ending inside a docstring.
+  const swallows = (s: Side, toks: Tok[]) => {
+    const first = s.lines.findIndex((l) => l.changed);
+    return first >= 0 && toks.some((t) => isUnclosed(t) && t.line <= first);
+  };
+  if ((swallows(old, plain.toks.old) || swallows(neu, plain.toks.neu))) {
     for (const open of ['"""', "'''"]) {
       const r = attempt(open);
       if (r.unmatched < best.unmatched) best = r;
@@ -109,17 +118,18 @@ function lexAndAlign(old: Side, neu: Side, lang: Lang): { a: Int32Array; b: Int3
   }
   old.toks = best.toks.old;
   neu.toks = best.toks.neu;
-  return best.p;
+  return { ...best.p, guessed: best !== plain };
 }
 
-function classifyHunk(h: Hunk, lang: Lang, out: FileFormatting) {
+/** Returns true if the hunk needed the "starts inside a docstring" guess. */
+function classifyHunk(h: Hunk, out: FileFormatting): boolean {
   const old = side(h, '-');
   const neu = side(h, '+');
-  const partners = lexAndAlign(old, neu, lang);
+  const partners = lexAndAlign(old, neu);
   markLines(old, partners.a, neu, partners.b);
   markLines(neu, partners.b, old, partners.a);
-  wholeStatements(old, partners.a, neu, lang);
-  if (lang.python || lang.id === 'js') matchImports(old, neu, lang);
+  wholeStatements(old, partners.a, neu);
+  matchImports(old, neu);
 
   // Re-indented lines (code moved in/out of a block) look like formatting next
   // to the real change that caused them (a removed `try:`); on their own, a
@@ -234,6 +244,7 @@ function classifyHunk(h: Hunk, lang: Lang, out: FileFormatting) {
     out.right.push(...rightLines);
     out.blocks.push({ left: leftLines, right: rightLines, kind: r.kind, reason });
   }
+  return partners.guessed;
 }
 
 /**
@@ -376,37 +387,27 @@ function markLines(s: Side, mine: Int32Array, other: Side, theirs: Int32Array) {
  * whose target changed aren't "just formatting"). Likewise for the statements
  * on the other side its tokens were matched with, transitively.
  *
- * A statement is a Python logical line; elsewhere, lines joined by an open
- * `(` or `[`. Comment-only lines belong to no statement. Imports are exempt:
- * each imported name is independent, so a rewrapped import with one new name
- * only shows that name.
+ * A statement is a Python logical line. Comment-only lines belong to no
+ * statement. Imports are exempt: each imported name is independent, so a
+ * rewrapped import with one new name only shows that name.
  */
-function wholeStatements(old: Side, a: Int32Array, neu: Side, lang: Lang) {
+function wholeStatements(old: Side, a: Int32Array, neu: Side) {
   const imports = [new Set<number>(), new Set<number>()];
   const groupsOf = (s: Side, i: number) => {
     const g = new Int32Array(s.lines.length).fill(-1);
     const seen = new Set<number>();
     let id = 0;
-    let depth = 0;
-    let lastLine = -1;
     for (const t of s.toks) {
-      if (lang.python) {
-        if (t.key === '\u0001newline') {
-          id++;
-          continue;
-        }
-      } else if (depth === 0 && t.line > lastLine) id++;
+      if (t.key === '\u0001newline') {
+        id++;
+        continue;
+      }
       if (!isLayoutTok(t) && !isCommentTok(t)) {
         if (!seen.has(id)) {
           seen.add(id);
-          if (t.key === 'import' || (lang.python && t.key === 'from')) imports[i]!.add(id);
+          if (t.key === 'import' || t.key === 'from') imports[i]!.add(id);
         }
         for (let l = t.line; l <= t.endLine; l++) if (g[l] === -1) g[l] = id;
-        lastLine = t.endLine;
-      }
-      if (!lang.python) {
-        if (t.key === '(' || t.key === '[') depth++;
-        else if ((t.key === ')' || t.key === ']') && depth > 0) depth--;
       }
     }
     return g;
@@ -482,7 +483,6 @@ interface ImportStmt {
   topLevel: boolean;
 }
 
-const isString = (k: string) => k.startsWith('\u0002');
 const isComment = (k: string) => k.startsWith('\u0003');
 const isLayout = (k: string) => k.startsWith('\u0001');
 
@@ -491,47 +491,19 @@ const isLayout = (k: string) => k.startsWith('\u0001');
  * `from os import sep` + `from os import path`), so sorting, regrouping and
  * rewrapping imports compare equal.
  */
-export function importStatements(toks: Tok[], lang: Lang): ImportStmt[] {
+export function importStatements(toks: Tok[]): ImportStmt[] {
   const stmts: ImportStmt[] = [];
-  if (lang.python) {
-    let start = 0;
-    for (let k = 0; k <= toks.length; k++) {
-      if (k < toks.length && toks[k]!.key !== '\u0001newline') continue;
-      const line = toks.slice(start, k + 1);
-      start = k + 1;
-      const code = line.filter((t) => !isComment(t.key) && !isLayout(t.key)).map((t) => t.key);
-      if (code[0] !== 'import' && code[0] !== 'from') continue;
-      const entries = pythonEntries(code);
-      if (!entries) continue;
-      const head = line.find((t) => t.key.startsWith('\u0001indent')) ?? line[0]!;
-      stmts.push({ first: head.line, last: line.at(-1)!.endLine, entries, topLevel: head.topLevel === true });
-    }
-    return stmts;
-  }
-  for (let k = 0; k < toks.length; k++) {
-    if (toks[k]!.key !== 'import' || ['(', '.'].includes(toks[k + 1]?.key ?? '(')) continue;
-    let end = k + 1;
-    while (end < toks.length && !isString(toks[end]!.key)) end++;
-    if (end >= toks.length) break;
-    const names = toks.slice(k + 1, end).map((t) => t.key).filter((x) => !isComment(x) && x !== 'from');
-    const mod = toks[end]!.key;
-    const entries: string[] = [];
-    let braces = false;
-    let seg: string[] = [];
-    const push = () => {
-      if (seg.length) entries.push(`${mod} ${braces ? '{}' : ''}${seg.join(' ')}`);
-      seg = [];
-    };
-    for (const x of names) {
-      if (x === '{') (push(), (braces = true));
-      else if (x === '}') (push(), (braces = false));
-      else if (x === ',') push();
-      else seg.push(x);
-    }
-    push();
-    if (!entries.length) entries.push(`${mod} (side effect)`);
-    stmts.push({ first: toks[k]!.line, last: toks[end]!.endLine, entries, topLevel: true });
-    k = end;
+  let start = 0;
+  for (let k = 0; k <= toks.length; k++) {
+    if (k < toks.length && toks[k]!.key !== '\u0001newline') continue;
+    const line = toks.slice(start, k + 1);
+    start = k + 1;
+    const code = line.filter((t) => !isComment(t.key) && !isLayout(t.key)).map((t) => t.key);
+    if (code[0] !== 'import' && code[0] !== 'from') continue;
+    const entries = pythonEntries(code);
+    if (!entries) continue;
+    const head = line.find((t) => t.key.startsWith('\u0001indent')) ?? line[0]!;
+    stmts.push({ first: head.line, last: line.at(-1)!.endLine, entries, topLevel: head.topLevel === true });
   }
   return stmts;
 }
@@ -562,9 +534,9 @@ function pythonEntries(code: string[]): string[] | null {
  * module level) are imports being sorted/regrouped: their remaining real
  * lines become the "imports" kind.
  */
-function matchImports(old: Side, neu: Side, lang: Lang) {
+function matchImports(old: Side, neu: Side) {
   const touched = (s: Side) =>
-    importStatements(s.toks, lang).filter((st) => {
+    importStatements(s.toks).filter((st) => {
       for (let l = st.first; l <= st.last; l++) if (s.lines[l]?.changed) return true;
       return false;
     });

@@ -91,7 +91,7 @@ describe('formatting-only changes', () => {
     expect(r.right).toEqual([1]);
     expect(r.blocks.map((b) => b.reason)).toEqual(['comment changes']);
     expect(r.whole).toBe(false); // comments aren't formatting: the file isn't auto-viewed
-    expect(classify('a.ts', `f(a) // old\n`, `g(a) // new\n`).left).toEqual([]);
+    expect(classify('a.py', `f(a)  # old\n`, `g(a)  # new\n`).left).toEqual([]);
   });
 
   it('indentation is meaningful in Python', () => {
@@ -168,10 +168,28 @@ describe('formatting-only changes', () => {
   it('a hunk that starts inside a docstring', () => {
     const doc = `"""Module docstring.\n\nMore text.\nEven more.\n`;
     const r = classify('a.py', `${doc}"""\nimport os\n\nx = f(a,b)\n`, `${doc}"""\n\nimport os\n\nx = f(a, b)\n`);
-    expect(r.whole).toBe(true);
+    expect(r.formatting).toBe(r.changed);
+    expect(r.whole).toBe(false); // read with the docstring guess: dimmed, but never auto-viewed
     // A docstring is compared like a comment: its text matters, its spacing doesn't.
-    expect(classify('a.py', `${doc}  text\n"""\n`, `${doc} text\n"""\n`).whole).toBe(true);
-    expect(classify('a.py', `${doc}text\n"""\n`, `${doc}test\n"""\n`).whole).toBe(false);
+    const short = `"""Doc.\n`;
+    expect(classify('a.py', `${short}  text\n"""\n`, `${short} text\n"""\n`).whole).toBe(true);
+    expect(classify('a.py', `${short}text\n"""\n`, `${short}test\n"""\n`).whole).toBe(false);
+    // Ambiguous (the hunk starts mid-docstring, the string reopens after the change): stays real.
+    expect(classify('a.py', `${doc}  text\n"""\n`, `${doc} text\n"""\n`).formatting).toBe(0);
+  });
+
+  it('auto-view guards (security review)', () => {
+    // Python: `from (` / `raise (` aren't calls.
+    expect(classify('a.py', `raise (a,)\n`, `raise (a)\n`).whole).toBe(false);
+  });
+
+  it('renames and mode changes are never auto-viewed', () => {
+    const rename = parseUnifiedDiff(
+      'diff --git a/a.py b/b.py\nsimilarity index 90%\nrename from a.py\nrename to b.py\n--- a/a.py\n+++ b/b.py\n@@ -1 +1 @@\n-x=1\n+x = 1\n',
+    )[0]!;
+    expect(classifyFile(rename)!.whole).toBe(false);
+    const mode = parseUnifiedDiff('diff --git a/a.py b/a.py\nold mode 100644\nnew mode 100755\n--- a/a.py\n+++ b/a.py\n@@ -1 +1 @@\n-x=1\n+x = 1\n')[0]!;
+    expect(classifyFile(mode)!.whole).toBe(false);
   });
 
   it('tuple trailing commas are meaningful', () => {
@@ -181,7 +199,7 @@ describe('formatting-only changes', () => {
   });
 
   it('operators are not merged across whitespace', () => {
-    expect(classify('a.js', `x = a - -b\n`, `x = a--b\n`).whole).toBe(false);
+    expect(classify('a.py', `x = a * *b\n`, `x = a**b\n`).whole).toBe(false);
   });
 
   it('comments: spacing is formatting, text is not', () => {
@@ -206,23 +224,8 @@ describe('formatting-only changes', () => {
     expect(classify('a.py', `f('one', 'two')\n`, `f('onetwo')\n`).whole).toBe(false);
   });
 
-  it('JS: semicolons, quotes, trailing commas, wrapping', () => {
-    const r = classify(
-      'a.ts',
-      `const x = {a: 1, b: 'two'};\nfoo(x, y);\n`,
-      `const x = {\n  a: 1,\n  b: "two",\n}\nfoo(\n  x,\n  y,\n)\n`,
-    );
-    expect(r.whole).toBe(true);
-  });
-
-  it('brace languages: quote kinds are meaningful', () => {
-    expect(classify('a.go', `x := 'a'\n`, `x := "a"\n`).whole).toBe(false);
-    expect(classify('a.go', `x := f(a,  b)\n`, `x := f(\n\ta,\n\tb,\n)\n`).whole).toBe(true);
-  });
-
-  it('other files: only trailing whitespace and blank lines', () => {
-    expect(classify('a.yml', `a: 1  \n\nb: 2\n`, `a: 1\nb: 2\n`).whole).toBe(true);
-    expect(classify('a.yml', `a:\n  b: 1\n`, `a:\n    b: 1\n`).whole).toBe(false);
+  it('only Python files', () => {
+    for (const path of ['a.ts', 'a.go', 'a.yml']) expect(() => classify(path, `x = 1  \n`, `x = 1\n`)).toThrow('not classified');
   });
 
   it('never for markdown', () => {
@@ -279,10 +282,4 @@ describe('import reordering', () => {
     expect(r.whole).toBe(false);
   });
 
-  it('sorted JS imports, named vs default kept apart', () => {
-    expect(
-      classify('a.ts', `import { b, a } from './m';\nimport z from 'z';\n`, `import z from 'z'\nimport { a, b } from "./m"\n`).whole,
-    ).toBe(true);
-    expect(classify('a.ts', `import { a } from './m';\n`, `import a from './m';\n`).whole).toBe(false);
-  });
 });
