@@ -16,6 +16,7 @@
 //   $params     a (...) parameter list, or a single parameter name
 //   $params?    optional parameter list
 //   $generics   an optional <...> type parameter list
+//   $skip       any tokens (brackets balanced) up to the next word of the pattern
 //   $entries    the imported names: everything up to the next word of the pattern
 //   $module     the module: a string, or a dotted name such as ..pkg.mod
 {

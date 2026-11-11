@@ -50,10 +50,9 @@
     { "kind": "class", "pattern": "class $name" },
     { "kind": "class", "pattern": "interface $name" },
     { "kind": "class", "pattern": "enum $name" },
-    // const add = (a, b) => …, const add = async x => …
-    { "kind": "function", "pattern": "const|let|var $name = async? $params =>" },
-    // Typed: const add: Adder = (a, b) => … is not covered (the type can be anything).
-    { "kind": "function", "pattern": "const|let|var $name = async? function *? $params" },
+    // const add = (a, b): number => …, const add: Adder = async x => …
+    { "kind": "function", "pattern": "const|let|var $name $skip = async? $generics $params $skip =>" },
+    { "kind": "function", "pattern": "const|let|var $name $skip = async? function *? $params" },
     // Methods: name(args) { … } inside a class body.
     { "kind": "function", "pattern": "*? $name $generics $params", "inside": "class" }
   ],

@@ -18,6 +18,8 @@ export interface Language {
   meaninglessPrefixes: Set<string>;
   /** Quote → index of its group of equivalent quotes. */
   quoteGroup: Map<string, number>;
+  /** Group index → regex matching an escaped quote character of that group (`\'`, `\"`). */
+  escapedQuote: Map<number, RegExp>;
   interpolation: { prefixes: Set<string>; quotes: Set<string>; open: string; close: string } | null;
   implicitConcatenation: boolean;
   /** Sticky identifier regex. */
@@ -116,6 +118,12 @@ export function compileLanguage(spec: LanguageSpec): Language {
     rawPrefixes: new Set((s.rawPrefixes ?? []).map((p) => p.toLowerCase())),
     meaninglessPrefixes: new Set((s.meaninglessPrefixes ?? []).map((p) => p.toLowerCase())),
     quoteGroup,
+    escapedQuote: new Map(
+      (s.equivalentQuotes ?? []).map((g, i) => {
+        const chars = [...new Set(g.join(''))].map(escapeRe).join('');
+        return [i, new RegExp(`\\\\([${chars}])`, 'g')] as const;
+      }),
+    ),
     interpolation: s.interpolation
       ? {
           prefixes: new Set((s.interpolation.prefixes ?? []).map((p) => p.toLowerCase())),

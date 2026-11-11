@@ -222,5 +222,5 @@ export function normalizeString(value: string, lang: Language): string {
   const body = rest.slice(quote.length, closed ? -quote.length : undefined);
   if (group === undefined) return `${letters}${quote}${body}${closed ? quote : ''}`;
   const raw = [...letters].some((c) => lang.rawPrefixes.has(c));
-  return `${letters}Q${group}:${raw ? body : body.replace(/\\(['"`])/g, '$1')}${closed ? '' : '…'}`;
+  return `${letters}Q${group}:${raw ? body : body.replace(lang.escapedQuote.get(group)!, '$1')}${closed ? '' : '…'}`;
 }

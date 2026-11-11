@@ -87,7 +87,8 @@ function stringKey(t: ScanTok, lang: Language): string {
   const group = lang.quoteGroup.get(quote);
   // Quote style is formatting within a group of equivalent quotes ('\'' ≡ "'").
   const kind = group === undefined ? quote : `Q${group}`;
-  let text = group !== undefined && !raw ? body.replace(/\\(['"`])/g, '$1') : body;
+  // Only the group's own quote characters: `\`` stays two characters in Python.
+  let text = group !== undefined && !raw ? body.replace(lang.escapedQuote.get(group)!, '$1') : body;
   const interp = lang.interpolation;
   if (interp && (interp.quotes.has(quote) || [...letters].some((c) => interp.prefixes.has(c)))) text = fieldQuotes(text, interp.open, interp.close);
   return `\u0002${letters}${kind}${closed ? '' : '…'}\u0002${text}`;

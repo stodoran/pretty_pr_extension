@@ -181,6 +181,9 @@ describe('formatting-only changes', () => {
   it('auto-view guards (security review)', () => {
     // Python: `from (` / `raise (` aren't calls.
     expect(classify('a.py', `raise (a,)\n`, `raise (a)\n`).whole).toBe(false);
+    // Only escaped quotes of the string's own kind are unescaped: "\`" is two characters in Python.
+    expect(classify('a.py', 'x = "\\`"\n', 'x = "`"\n').whole).toBe(false);
+    expect(classify('a.py', `x = 'it\\'s'\n`, `x = "it's"\n`).whole).toBe(true);
     // A hunk starting inside a string: its closing quote, read as an opening
     // one, would turn the changed code into a "docstring".
     const str = (y: string) => `x = 1\ns = \"\"\"\na\nb\nc\nd\n\"\"\"\n${y}\nt = \"\"\"\ne\n\"\"\"\n`;

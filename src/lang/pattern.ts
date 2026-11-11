@@ -9,6 +9,7 @@ export type PatternEl =
   | { kind: 'params'; optional: boolean }
   | { kind: 'generics' }
   | { kind: 'entries' }
+  | { kind: 'skip' }
   | { kind: 'module' };
 
 export interface Pattern {
@@ -24,6 +25,7 @@ export function compilePattern(source: string): Pattern {
     if (p === '$params' || p === '$params?') return { kind: 'params', optional: p.endsWith('?') };
     if (p === '$generics') return { kind: 'generics' };
     if (p === '$entries') return { kind: 'entries' };
+    if (p === '$skip') return { kind: 'skip' };
     if (p === '$module') return { kind: 'module' };
     if (p.startsWith('$')) throw new Error(`unknown placeholder ${p}`);
     const optional = p.length > 1 && p.endsWith('?');
@@ -108,6 +110,21 @@ export function matchPattern(p: Pattern, v: TokenView, start: number, keywords: 
       case 'generics':
         if (key === '<') i = skipGroup(v, i, ANGLE_OPEN, ANGLE_CLOSE);
         break;
+      case 'skip': {
+        // Anything (brackets balanced) up to the next word of the pattern, within the statement.
+        const next = p.els.slice(e + 1).find((x) => x.kind === 'lit') as Extract<PatternEl, { kind: 'lit' }> | undefined;
+        if (!next) return null;
+        let depth = 0;
+        for (; i < v.length; i++) {
+          const k = v.key(i);
+          if (depth === 0 && next.values.has(k)) break;
+          if (depth === 0 && (k === ';' || k === '')) return null;
+          if (OPEN.has(k)) depth++;
+          else if (CLOSE.has(k) && --depth < 0) return null;
+        }
+        if (i >= v.length && !lenient) return null;
+        break;
+      }
       case 'entries': {
         const next = p.els.slice(e + 1).find((x) => x.kind === 'lit') as Extract<PatternEl, { kind: 'lit' }> | undefined;
         const from = i;
