@@ -78,6 +78,8 @@ export function rulesForRepo(cfg: TestPatternConfig, owner: string, repo: string
  * rule wins, and a leading `!` negates (marks the file as NOT a test).
  * Patterns without a slash match against the basename.
  */
+const NEVER_AUTO_VIEW = /^\.github\//;
+
 export function createTestFileMatcher(
   cfg: TestPatternConfig,
   owner: string,
@@ -91,6 +93,8 @@ export function createTestFileMatcher(
   });
 
   return (path) => {
+    // CI/workflow config always gets a human look, whatever the patterns say.
+    if (NEVER_AUTO_VIEW.test(path)) return { isTest: false };
     let result: MatchResult = { isTest: false };
     for (const c of compiled) {
       if (c.test(path)) result = { isTest: !c.negated, rule: c.rule };

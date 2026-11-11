@@ -1,8 +1,34 @@
 # Pretty PR Review
 
-Chrome extension (MV3, WXT + TypeScript) that augments GitHub PR review.
+Chrome extension (MV3, WXT + TypeScript) for calmer GitHub PR reviews. Works without a token, using your normal GitHub session.
 
-**v1:** on a PR's *Files changed* tab, test files and markdown files (configurable globs) are marked as viewed automatically.
+## Features
+
+### Moved code
+
+Python functions and classes that moved, even renamed or modified, are tinted and labelled. Click a label to jump to the other end; **Show** lists every move, with a side-by-side **Compare** for modified ones.
+
+![Moved functions labelled in the diff, with the moved-code panel open](docs/screenshots/moved-code.png)
+
+### Auto-viewed tests and docs
+
+Test and markdown files are marked as *Viewed* as they load, tagged **auto** so you can tell them apart from files you viewed yourself. Un-view one and it's left alone on that PR.
+
+![Test files collapsed and tagged "auto"](docs/screenshots/auto-viewed.png)
+
+### Definition search
+
+Hover a `def`, `class` or `import` line to search the repo (default branch) for that name.
+
+![Search button next to a function definition](docs/screenshots/definition-search.png)
+
+### Settings
+
+Toggle features, pick each feature's color, and choose which files are auto-viewed, with per-org and per-repo overrides.
+
+![Settings: features and colors](docs/screenshots/settings.png)
+
+![Settings: auto-viewed file patterns and overrides](docs/screenshots/settings-patterns.png)
 
 ## Setup
 

@@ -30,7 +30,8 @@ export function createReactUiAdapter(): DiffDomAdapter {
       const text = (heading?.querySelector('code') ?? heading)?.textContent?.replace(INVISIBLE, '').trim();
       if (!text) return null;
       // Renames render as "old/path → new/path"; we want the new path.
-      return text.split(/\s+→\s+/).pop() ?? null;
+      const parts = text.split(/\s+→\s+/);
+      return parts.length <= 2 ? (parts.at(-1) ?? null) : null; // ambiguous rename header: don't guess
     },
     viewedToggle,
     isViewed(el) {

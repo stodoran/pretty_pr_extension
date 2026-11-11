@@ -12,9 +12,15 @@ export function dedent(text: string): string {
   return lines.map((l) => l.slice(min)).join('\n');
 }
 
+/** Above this many line pairs the LCS table gets too big; show a plain remove/add instead. */
+const MAX_CELLS = 4_000_000;
+
 export function diffLines(a: string, b: string): DiffOp[] {
   const x = a.split('\n');
   const y = b.split('\n');
+  if (x.length * y.length > MAX_CELLS) {
+    return [...x.map((text) => ({ kind: '-' as const, text })), ...y.map((text) => ({ kind: '+' as const, text }))];
+  }
   const key = (s: string) => s.trimEnd();
   const dp = Array.from({ length: x.length + 1 }, () => new Uint32Array(y.length + 1));
   for (let i = x.length - 1; i >= 0; i--)

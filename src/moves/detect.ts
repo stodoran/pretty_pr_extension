@@ -70,6 +70,7 @@ interface Candidate {
 }
 
 const SHINGLE = 4;
+const MAX_LCS_CELLS = 25_000_000;
 
 function shingles(tokens: string[]): Set<string> {
   const s = new Set<string>();
@@ -178,8 +179,10 @@ export function detectMoves(files: FileVersions[], options: Partial<DetectOption
       }
       const sizeRatio = Math.min(r.norm.length, a.norm.length) / Math.max(r.norm.length, a.norm.length);
       if (sizeRatio < opts.minSimilarity * 0.75) continue;
-      if (jaccard(r.shingles, a.shingles) < 0.2) continue;
-      const score = lcsSimilarity(r.norm, a.norm);
+      const j = jaccard(r.shingles, a.shingles);
+      if (j < 0.2) continue;
+      // Bound the O(n·m) LCS for huge classes; shingle overlap is a fair stand-in there.
+      const score = r.norm.length * a.norm.length > MAX_LCS_CELLS ? j : lcsSimilarity(r.norm, a.norm);
       if (score >= opts.minSimilarity) pairs.push({ r, a, score });
     }
   }
