@@ -5,8 +5,12 @@
  * extension's host permissions allow.
  */
 
+/** GitHub won't generate diffs past a size limit (it answers 403 "error: too big or took too long to generate"). */
+export const DIFF_TOO_LARGE = "GitHub won't generate a diff this large, so moved code and formatting aren't checked on this PR.";
+
 async function get(url: string): Promise<Response> {
   const res = await fetch(url, { credentials: 'include' });
+  if (res.status === 403 && /^error: too big/.test(await res.clone().text().catch(() => ''))) throw new Error(DIFF_TOO_LARGE);
   if (res.status === 404) throw new Error(`GitHub returned 404 for ${new URL(url).pathname} (signed out, or no access?)`);
   if (!res.ok) throw new Error(`GitHub returned ${res.status} for ${new URL(url).pathname}`);
   return res;

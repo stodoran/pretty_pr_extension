@@ -41,8 +41,6 @@ To change the demo, edit `toys/` or `after/`, run `npm test`, then rebuild the P
 
 ## TypeScript
 
-Needs the TypeScript language file: settings page → Languages → TypeScript / JavaScript → **Install**.
-
 - `typescript/toys/` is the base version, on `main`.
 - `typescript/after/` is what the demo PR changes it into. The PR branch (`demo/typescript-cases`) is `main` with `typescript/after/*` copied over `typescript/toys/`.
 - `src/formatting/demo-typescript.test.ts` checks every case below, using `languages/typescript.jsonc`.
