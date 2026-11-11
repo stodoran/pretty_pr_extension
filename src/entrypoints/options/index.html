@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="manifest.open_in_tab" content="true" />
+    <title>Pretty PR Review</title>
+    <link rel="icon" href="/icon/32.png" />
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <main>
+      <h1><img src="/icon/48.png" alt="" width="28" height="28" /> Pretty PR Review</h1>
+
+
+      <section>
+        <h2>Features</h2>
+        <label class="check"><input type="checkbox" id="feat-autoViewTests" /> Auto-mark test and markdown files as viewed on “Files changed”</label>
+        <label class="check"><input type="checkbox" id="feat-movedCode" /> Highlight moved Python functions (including renamed/modified ones)</label>
+        <div class="row indent">
+          <label for="moved-similarity">Minimum similarity for a modified function</label>
+          <input type="number" id="moved-similarity" min="0.4" max="1" step="0.05" />
+        </div>
+        <label class="check indent"><input type="checkbox" id="moved-dim" /> Dim functions that moved without changes</label>
+        <label class="check"><input type="checkbox" id="feat-definitionSearch" /> Search buttons on Python definitions (def / class / import), searching the default branch</label>
+      </section>
+
+      <section>
+        <h2>Colors</h2>
+        <p class="hint">Each feature has its own color. Changes apply to open PR tabs as soon as you save.</p>
+        <div id="colors"></div>
+      </section>
+
+      <section>
+        <h2>Auto-viewed file patterns</h2>
+        <p class="hint">Test files and markdown by default.</p>
+        <p class="hint">
+          One glob per line. Evaluated in order, last match wins; prefix with <code>!</code> to exclude.
+          Patterns without a <code>/</code> match the file name.
+        </p>
+        <h3>Defaults</h3>
+        <textarea id="defaults" rows="12" spellcheck="false"></textarea>
+        <button id="reset-defaults" type="button">Reset to built-in defaults</button>
+
+        <h3>Overrides</h3>
+        <p class="hint">Scope is <code>owner/*</code> or <code>owner/repo</code>. Org overrides apply before repo overrides.</p>
+        <div id="overrides"></div>
+        <button id="add-override" type="button">+ Add override</button>
+
+        <h3>Try it</h3>
+        <div class="row">
+          <input id="try-repo" placeholder="owner/repo" />
+          <input id="try-path" placeholder="path/to/file.test.ts" class="grow" />
+        </div>
+        <p id="try-result" class="hint">Uses the unsaved values above.</p>
+      </section>
+
+      <footer>
+        <button id="save" type="button" class="primary">Save</button>
+        <span id="save-status"></span>
+      </footer>
+    </main>
+    <script type="module" src="./main.ts"></script>
+  </body>
+</html>
