@@ -1,6 +1,7 @@
 import { browser } from 'wxt/browser';
 import { loadSettings } from '../core/settings';
 import { createTestFileMatcher } from '../core/test-files';
+import { loadRegistry } from '../lang/storage';
 import { fetchHeadOidFromPatch, fetchPrDiff, fetchRawFile, sha1Hex } from '../github/fetch';
 import { detectMoves, type FileVersions, type MovedFunction } from './detect';
 import { parseUnifiedDiff, reverseApply, sideFromDiff, type DiffFile } from './unified-diff';
@@ -13,7 +14,6 @@ export interface MovesResult {
   skipped: { path: string; reason: string }[];
 }
 
-const PYTHON = /\.pyi?$/;
 const MAX_FILES = 200;
 const FETCH_CONCURRENCY = 6;
 const memoryCache = new Map<string, MovesResult>();
@@ -39,11 +39,11 @@ export async function analyzeMoves(params: {
   headOid: string | null;
 }): Promise<MovesResult> {
   const { owner, repo, number } = params;
-  const [diffText, settings] = await Promise.all([fetchPrDiff(owner, repo, number), loadSettings()]);
+  const [diffText, settings, registry] = await Promise.all([fetchPrDiff(owner, repo, number), loadSettings(), loadRegistry()]);
   const { minSimilarity } = settings.features.movedCode;
 
   // Cache by diff content (+ threshold): any new push changes the diff.
-  const cacheKey = `moves:v3:${owner}/${repo}#${number}:${minSimilarity}:${await sha1Hex(diffText)}`;
+  const cacheKey = `moves:v4:${owner}/${repo}#${number}:${minSimilarity}:${registry.hash}:${await sha1Hex(diffText)}`;
   const cached = memoryCache.get(cacheKey) ?? ((await browser.storage.session.get(cacheKey))[cacheKey] as MovesResult | undefined);
   if (cached) return cached;
 
@@ -51,7 +51,7 @@ export async function analyzeMoves(params: {
   const skipped: MovesResult['skipped'] = [];
   const files = parseUnifiedDiff(diffText).filter((f) => {
     const path = (f.newPath ?? f.oldPath)!;
-    if (f.binary || !PYTHON.test(path)) return false;
+    if (f.binary || !registry.forPath(path)) return false;
     if (isTest(path).isTest) return false;
     return true;
   });
@@ -93,7 +93,7 @@ export async function analyzeMoves(params: {
   });
 
   const analyzed = versions.filter((v): v is FileVersions => v !== null);
-  const result: MovesResult = { moves: detectMoves(analyzed, { minSimilarity }), analyzedFiles: analyzed.length, skipped };
+  const result: MovesResult = { moves: detectMoves(analyzed, { minSimilarity }, registry), analyzedFiles: analyzed.length, skipped };
   memoryCache.set(cacheKey, result);
   await browser.storage.session.set({ [cacheKey]: result }).catch(() => {}); // quota: memory cache still works
   return result;

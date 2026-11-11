@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { enclosingDefinitions, type DiffRow, definitionTerms, repoSearchUrl } from './terms';
+import { builtinRegistry } from '../../lang/registry';
+import { enclosingDefinitions as enclosingWith, type DiffRow, definitionTerms as termsWith, repoSearchUrl } from './terms';
+
+const python = builtinRegistry.byId('python')!;
+const definitionTerms = (line: string) => termsWith(line, python);
+const enclosingDefinitions = (rows: DiffRow[], index: number) => enclosingWith(rows, index, python);
 
 describe('definitionTerms', () => {
   it.each([

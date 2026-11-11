@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { highlightPython } from './highlight';
+import { highlight } from './highlight';
+import { builtinRegistry } from './registry';
+
+const python = builtinRegistry.byId('python')!;
+const highlightPython = (lines: string[]) => highlight(lines, python);
 
 const cls = (line: string, i = 0) => highlightPython([line])[0]!.filter((s) => s.cls).map((s) => `${s.cls}:${s.text}`);
 

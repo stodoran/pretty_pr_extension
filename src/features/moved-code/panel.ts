@@ -1,7 +1,8 @@
 import type { FunctionLocation, MovedFunction } from '../../moves/detect';
 import { dedent, diffLines, type DiffOp } from '../../moves/line-diff';
 import { COLORS } from '../../core/ui/colors';
-import { highlightPython, type HlSpan } from '../../moves/python/highlight';
+import { highlight, type HlSpan } from '../../lang/highlight';
+import type { Registry } from '../../lang/registry';
 
 /**
  * Side panel listing moved functions, plus a modal comparing a function's old
@@ -83,6 +84,7 @@ export class MovesPanel {
   constructor(
     private moves: MovedFunction[],
     private handlers: PanelHandlers,
+    private registry: Registry,
   ) {
     const style = document.createElement('style');
     style.textContent = STYLE;
@@ -153,9 +155,11 @@ export class MovesPanel {
 
     const body = el('div', 'body');
     if (m.kind === 'moved') body.append(el('div', 'note muted', 'Only names, comments or formatting differ; the logic is unchanged.'));
+    const lang = this.registry.byId(m.lang);
+    const plain = (text: string) => text.split('\n').map((t) => (t ? [{ text: t }] : []));
     const hl: Highlights = {
-      old: highlightPython(dedent(m.from.text).split('\n')),
-      new: highlightPython(dedent(m.to.text).split('\n')),
+      old: lang ? highlight(dedent(m.from.text).split('\n'), lang) : plain(dedent(m.from.text)),
+      new: lang ? highlight(dedent(m.to.text).split('\n'), lang) : plain(dedent(m.to.text)),
     };
     body.append(
       isSplitDiffView() ? renderSplit(ops, m.from.startLine, m.to.startLine, hl) : renderUnified(ops, m.from.startLine, m.to.startLine, hl),

@@ -1,4 +1,7 @@
 import { COLOR_INFO, COLOR_KEYS, type ColorSettings } from '../../core/ui/colors';
+import { runExamples } from '../../lang/examples';
+import { BUILTIN_LANGUAGES, buildRegistry, EXAMPLE_LANGUAGES, loadLanguage, type StoredLanguages } from '../../lang/registry';
+import { loadStoredLanguages, saveStoredLanguages } from '../../lang/storage';
 import { SETTINGS_VERSION, loadSettings, saveSettings, type Settings } from '../../core/settings';
 import {
   BUILTIN_TEST_PATTERNS,
@@ -108,6 +111,115 @@ function readColors(): ColorSettings {
   ) as ColorSettings;
 }
 
+// ---- languages ----------------------------------------------------------
+
+let stored: StoredLanguages = { custom: [], disabled: [] };
+
+function langStatus(text: string, ok: boolean) {
+  const out = $('lang-status');
+  out.className = ok ? 'ok' : 'err';
+  out.textContent = text;
+}
+
+function download(id: string, source: string) {
+  const url = URL.createObjectURL(new Blob([source], { type: 'application/json' }));
+  el('a', { href: url, download: `${id}.jsonc` }).click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+async function saveLanguages(next: StoredLanguages, message: string) {
+  stored = next;
+  await saveStoredLanguages(next);
+  renderLanguages();
+  langStatus(message, true);
+}
+
+/** Checks a language file; returns the error text, or null if it is fine. */
+function checkLanguage(source: string): { id: string; name: string } | string {
+  try {
+    const lang = loadLanguage(source);
+    const failures = runExamples(lang);
+    if (failures.length) return `Its examples don't hold:\n${failures.join('\n')}`;
+    return { id: lang.id, name: lang.name };
+  } catch (err) {
+    return (err as Error).message;
+  }
+}
+
+async function install(source: string) {
+  const res = checkLanguage(source);
+  if (typeof res === 'string') return langStatus(`Not installed. ${res}`, false);
+  const replaces = res.id in BUILTIN_LANGUAGES ? ` (replaces the built-in ${res.id})` : '';
+  await saveLanguages(
+    { custom: [...stored.custom.filter((c) => c.id !== res.id), { id: res.id, source }], disabled: stored.disabled.filter((d) => d !== res.id) },
+    `Installed ${res.name}${replaces}. Reload open PR tabs to use it.`,
+  );
+}
+
+function renderLanguages() {
+  const registry = buildRegistry({ custom: stored.custom, disabled: [] });
+  const box = $('languages');
+  box.replaceChildren();
+  const ids = [...new Set([...Object.keys(BUILTIN_LANGUAGES), ...stored.custom.map((c) => c.id), ...Object.keys(EXAMPLE_LANGUAGES)])];
+  for (const id of ids) {
+    const custom = stored.custom.find((c) => c.id === id);
+    const builtin = BUILTIN_LANGUAGES[id];
+    const example = !custom && !builtin ? EXAMPLE_LANGUAGES[id] : undefined;
+    const source = custom?.source ?? builtin ?? example!;
+    const lang = registry.byId(id) ?? (example ? loadLanguage(example) : null);
+    const badge = custom ? (builtin ? 'uploaded, replaces built-in' : 'uploaded') : builtin ? 'built in' : 'available';
+    const row = el(
+      'div',
+      { className: 'card lang' },
+      el(
+        'div',
+        { className: 'row' },
+        el('span', { className: 'name', textContent: lang?.name ?? id }),
+        el('span', { className: 'badge', textContent: badge }),
+        el('span', { className: 'exts hint grow', textContent: lang?.extensions.join(' ') ?? '' }),
+      ),
+    );
+    const actions = el('div', { className: 'row' });
+    if (example) {
+      const add = el('button', { type: 'button', textContent: 'Install' });
+      add.addEventListener('click', () => void install(example));
+      actions.append(add);
+    } else {
+      const enabled = el('input', { type: 'checkbox', checked: !stored.disabled.includes(id) });
+      enabled.addEventListener('change', () => {
+        const disabled = enabled.checked ? stored.disabled.filter((d) => d !== id) : [...stored.disabled, id];
+        void saveLanguages({ ...stored, disabled }, `${lang?.name ?? id} ${enabled.checked ? 'on' : 'off'}. Reload open PR tabs.`);
+      });
+      actions.append(el('label', { className: 'check' }, enabled, document.createTextNode('On')));
+    }
+    const dl = el('button', { type: 'button', textContent: 'Download' });
+    dl.addEventListener('click', () => download(id, source));
+    actions.append(dl);
+    if (custom) {
+      const remove = el('button', { type: 'button', className: 'danger', textContent: builtin ? 'Reset to built-in' : 'Remove' });
+      remove.addEventListener('click', () => {
+        void saveLanguages({ ...stored, custom: stored.custom.filter((c) => c.id !== id) }, builtin ? `${id}: built-in rules restored.` : `Removed ${lang?.name ?? id}.`);
+      });
+      actions.append(remove);
+    }
+    const error = registry.errors[id];
+    if (error) actions.append(el('span', { className: 'err', textContent: `Doesn't load: ${error}` }));
+    row.append(actions);
+    box.append(row);
+  }
+}
+
+async function initLanguages() {
+  stored = await loadStoredLanguages();
+  renderLanguages();
+  $<HTMLInputElement>('lang-upload').addEventListener('change', async (e) => {
+    const input = e.target as HTMLInputElement;
+    const file = input.files?.[0];
+    input.value = '';
+    if (file) await install(await file.text());
+  });
+}
+
 // ---- tester -------------------------------------------------------------
 
 function updateTry() {
@@ -143,6 +255,7 @@ async function init() {
   settings.testPatterns.overrides.forEach(overrideRow);
   colorRows(settings.colors);
   fadeRow(settings.features.formatting.fade);
+  await initLanguages();
 
   $('add-override').addEventListener('click', () => overrideRow());
   $('reset-defaults').addEventListener('click', () => {

@@ -1,5 +1,6 @@
 import { browser } from 'wxt/browser';
 import { fetchPrDiff, sha1Hex } from '../github/fetch';
+import { loadRegistry } from '../lang/storage';
 import { parseUnifiedDiff } from '../moves/unified-diff';
 import { classifyFile, type FileFormatting } from './classify';
 
@@ -14,13 +15,13 @@ const memoryCache = new Map<string, FormattingResult>();
 
 export async function analyzeFormatting(params: { owner: string; repo: string; number: number }): Promise<FormattingResult> {
   const { owner, repo, number } = params;
-  const diffText = await fetchPrDiff(owner, repo, number);
-  const cacheKey = `format:v9:${owner}/${repo}#${number}:${await sha1Hex(diffText)}`;
+  const [diffText, registry] = await Promise.all([fetchPrDiff(owner, repo, number), loadRegistry()]);
+  const cacheKey = `format:v11:${owner}/${repo}#${number}:${registry.hash}:${await sha1Hex(diffText)}`;
   const cached = memoryCache.get(cacheKey) ?? ((await browser.storage.session.get(cacheKey))[cacheKey] as FormattingResult | undefined);
   if (cached) return cached;
 
   const files = parseUnifiedDiff(diffText)
-    .map(classifyFile)
+    .map((f) => classifyFile(f, registry))
     .filter((f): f is FileFormatting => !!f && f.formatting > 0);
   const result: FormattingResult = { files };
   memoryCache.set(cacheKey, result);

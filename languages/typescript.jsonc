@@ -1,0 +1,99 @@
+// Pretty PR Review language file: TypeScript and JavaScript.
+//
+// Not built in: upload it on the extension's settings page (Languages) to use
+// it. See python.jsonc for what every key means.
+{
+  "id": "typescript",
+  "name": "TypeScript / JavaScript",
+  "version": 1,
+  "extensions": [".ts", ".tsx", ".mts", ".cts", ".js", ".jsx", ".mjs", ".cjs"],
+
+  "comments": { "line": ["//"], "block": [["/*", "*/"]] },
+
+  "strings": {
+    "quotes": ["'", "\"", "`"],
+    // Template literals may span lines.
+    "multiline": ["`"],
+    "prefixes": [],
+    "rawPrefixes": [],
+    "meaninglessPrefixes": [],
+    // 'a' and "a" are the same string; `a` is a template literal and stays apart.
+    "equivalentQuotes": [["'", "\""]],
+    "interpolation": { "prefixes": [], "quotes": ["`"], "open": "${", "close": "}" },
+    "implicitConcatenation": false
+  },
+
+  "identifierChars": "$",
+  "operators": [">>>=", "...", "===", "!==", "**=", "&&=", "||=", "??=", ">>=", "<<=", ">>>", "?.", "??", "=>",
+    "**", "++", "--", "&&", "||", "==", "!=", "<=", ">=", "+=", "-=", "*=", "/=", "%=", "&=", "|=", "^=", "<<", ">>"],
+  // A / after one of these keywords starts a regex literal (after a name or a
+  // closing bracket it divides).
+  "regex": { "afterKeywords": ["return", "typeof", "case", "do", "else", "in", "of", "new", "delete", "void", "throw", "yield", "await"] },
+
+  "keywords": ["break", "case", "catch", "class", "const", "continue", "debugger", "default", "delete", "do", "else",
+    "enum", "export", "extends", "finally", "for", "function", "if", "import", "in", "instanceof", "let", "new",
+    "return", "super", "switch", "throw", "try", "typeof", "var", "void", "while", "with", "yield", "await",
+    "interface", "implements"],
+  "softKeywords": ["async", "of", "from", "as", "type", "readonly", "declare", "abstract", "public", "private",
+    "protected", "static", "override", "get", "set", "namespace", "keyof", "satisfies"],
+  "constants": ["true", "false", "null", "undefined", "this", "NaN", "Infinity"],
+
+  "blocks": "braces",
+  "lineContinuation": null,
+  "memberAccess": [".", "?."],
+
+  "decorator": "@",
+  "modifiers": ["export", "default", "declare", "abstract", "public", "private", "protected", "static", "readonly",
+    "override", "async", "get", "set", "accessor"],
+  "definitions": [
+    { "kind": "function", "pattern": "function *? $name $generics $params" },
+    { "kind": "class", "pattern": "class $name" },
+    { "kind": "class", "pattern": "interface $name" },
+    { "kind": "class", "pattern": "enum $name" },
+    // const add = (a, b) => …, const add = async x => …
+    { "kind": "function", "pattern": "const|let|var $name = async? $params =>" },
+    // Typed: const add: Adder = (a, b) => … is not covered (the type can be anything).
+    { "kind": "function", "pattern": "const|let|var $name = async? function *? $params" },
+    // Methods: name(args) { … } inside a class body.
+    { "kind": "function", "pattern": "*? $name $generics $params", "inside": "class" }
+  ],
+  "docstrings": false,
+
+  "locals": {
+    // In JavaScript an assignment can be to an outer variable; only declarations make locals.
+    "assignment": false,
+    "declarations": ["let", "const", "var"],
+    "bindAfter": [],
+    "bindBefore": [],
+    "loops": [],
+    "lambda": null,
+    "globals": []
+  },
+
+  "imports": [
+    { "pattern": "import type? $entries from $module" },
+    { "pattern": "import $module" },
+    { "pattern": "export type? $entries from $module" }
+  ],
+
+  "formatting": {
+    // Trailing commas never change meaning.
+    "trailingCommas": "always",
+    // Semicolons are optional (ASI), unless the next line starts with one of
+    // these: then leaving the ; out would join the two statements.
+    "optionalSemicolons": { "neededBefore": ["(", "[", "+", "-", "/", ".", "`", "++", "--", "$regex"] },
+    // ASI ends the statement at a line break right after these.
+    "lineBreakEndsStatementAfter": ["return", "throw", "break", "continue", "yield", "++", "--"],
+    "wrappingParens": null,
+    "notCalls": []
+  },
+
+  "examples": [
+    { "before": "const x = {a: 1, b: 'two'};\nfoo(x, y);\n", "after": "const x = {\n  a: 1,\n  b: \"two\",\n}\nfoo(\n  x,\n  y,\n)\n", "expect": "formatting" },
+    { "before": "function f() {\n  return x\n}\n", "after": "function f() {\n  return\n  x\n}\n", "expect": "real" },
+    { "before": "const a = b;\n(c || d).run()\n", "after": "const a = b\n(c || d).run()\n", "expect": "real" },
+    { "before": "const r = /a b/\n", "after": "const r = /a  b/\n", "expect": "real" },
+    { "line": "export async function loadUser(id: string) {", "defines": ["loadUser"] },
+    { "line": "import { readFile, writeFile as write } from 'node:fs';", "defines": ["readFile", "writeFile"] }
+  ]
+}

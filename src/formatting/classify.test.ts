@@ -181,6 +181,13 @@ describe('formatting-only changes', () => {
   it('auto-view guards (security review)', () => {
     // Python: `from (` / `raise (` aren't calls.
     expect(classify('a.py', `raise (a,)\n`, `raise (a)\n`).whole).toBe(false);
+    // A hunk starting inside a string: its closing quote, read as an opening
+    // one, would turn the changed code into a "docstring".
+    const str = (y: string) => `x = 1\ns = \"\"\"\na\nb\nc\nd\n\"\"\"\n${y}\nt = \"\"\"\ne\n\"\"\"\n`;
+    expect(classify('a.py', str('y = f(a,  b)'), str('y = f(a, b)')).whole).toBe(false);
+    // Python reads a lone \r as a line break; a form feed resets indentation.
+    expect(classify('a.py', `x = f(a,b)\ry = 1\n`, `x = f(a, b)\ry = 1\n`).whole).toBe(false);
+    expect(classify('a.py', `if a:\n    x = 1\n`, `if a:\n  \f  x = 1\n`).whole).toBe(false);
   });
 
   it('renames and mode changes are never auto-viewed', () => {

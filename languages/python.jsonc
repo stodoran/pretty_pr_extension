@@ -1,0 +1,153 @@
+// Pretty PR Review language file: Python (built in).
+//
+// A language file teaches the extension one language: how to read its tokens,
+// where its functions and classes are, and which differences are only
+// formatting. Every feature (formatting-only lines, moved code, definition
+// search, Compare-view colors) reads the same file.
+//
+// To add a language, copy this file, change what differs, and upload it on the
+// extension's settings page (Languages). Uploading a file with "id": "python"
+// replaces these built-in rules. The format is JSON with comments (JSONC);
+// trailing commas are allowed. Unknown keys are rejected, so typos show up.
+//
+// Patterns (definitions, imports) are written over tokens, separated by spaces:
+//   word        that exact token        a|b      either token
+//   word?       optional token          $name    an identifier (not a keyword)
+//   $params     a (...) parameter list, or a single parameter name
+//   $params?    optional parameter list
+//   $generics   an optional <...> type parameter list
+//   $entries    the imported names: everything up to the next word of the pattern
+//   $module     the module: a string, or a dotted name such as ..pkg.mod
+{
+  "id": "python",
+  "name": "Python",
+  "version": 1,
+  "extensions": [".py", ".pyi"],
+
+  // ---- Tokens ----------------------------------------------------------------
+
+  "comments": { "line": ["#"], "block": [] },
+
+  "strings": {
+    // Every string delimiter; the longest one that matches wins.
+    "quotes": ["\"\"\"", "'''", "\"", "'"],
+    // Delimiters whose strings may span lines (others end at the line break).
+    "multiline": ["\"\"\"", "'''"],
+    // Letters allowed directly before the opening quote (case-insensitive).
+    "prefixes": ["r", "b", "u", "f", "rb", "br", "fr", "rf"],
+    // Prefix letters that turn escapes off.
+    "rawPrefixes": ["r"],
+    // Prefix letters that change nothing (u"x" is "x").
+    "meaninglessPrefixes": ["u"],
+    // Delimiters that mean the same thing: switching between them is formatting.
+    "equivalentQuotes": [["'", "\""], ["'''", "\"\"\""]],
+    // Strings with code inside (f-strings): quotes inside the {fields} are
+    // compared like any other quotes.
+    "interpolation": { "prefixes": ["f"], "quotes": [], "open": "{", "close": "}" },
+    // 'a' 'b' is the same string as 'ab'.
+    "implicitConcatenation": true
+  },
+
+  // Characters allowed in identifiers besides letters, digits and _.
+  "identifierChars": "",
+  // Operators longer than one character (single characters always are).
+  "operators": ["**=", "//=", ">>=", "<<=", "...", "->", ":=", "**", "//", "==", "!=", "<=", ">=",
+    "+=", "-=", "*=", "/=", "%=", "&=", "|=", "^=", "@=", "<<", ">>"],
+  // Regex literals (/.../): JavaScript-like languages only.
+  "regex": null,
+
+  "keywords": ["and", "as", "assert", "async", "await", "break", "class", "continue", "def", "del", "elif", "else",
+    "except", "finally", "for", "from", "global", "if", "import", "in", "is", "lambda", "nonlocal", "not", "or",
+    "pass", "raise", "return", "try", "while", "with", "yield"],
+  // Highlighted like keywords, but still allowed as names.
+  "softKeywords": ["match", "case", "type"],
+  // Highlighted as constants (so are ALL_CAPS names).
+  "constants": ["True", "False", "None", "self", "cls", "NotImplemented", "Ellipsis"],
+
+  // ---- Structure -------------------------------------------------------------
+
+  // "indentation": blocks are indented and a line break ends a statement
+  // (outside brackets). "braces": blocks are { ... }.
+  "blocks": "indentation",
+  // Joins a line with the next one.
+  "lineContinuation": "\\",
+  // Tokens that make the next name an attribute (kept as is when comparing moved code).
+  "memberAccess": ["."],
+
+  // ---- Definitions (moved code, definition search) ---------------------------
+
+  "decorator": "@",
+  // Words that may come before a definition and are skipped.
+  "modifiers": [],
+  "definitions": [
+    { "kind": "function", "pattern": "async? def $name $params" },
+    { "kind": "class", "pattern": "class $name" }
+  ],
+  // A string as the first statement of a module, class or function is its
+  // documentation (compared like a comment), as is any statement that is only a string.
+  "docstrings": true,
+
+  // Which names inside a function are its own (renamed when comparing moved code).
+  "locals": {
+    // Targets of an assignment are local.
+    "assignment": true,
+    "assignmentOperators": ["=", "+=", "-=", "*=", "/=", "//=", "%=", "**=", ">>=", "<<=", "&=", "|=", "^=", "@="],
+    // Keywords whose following names are declared (let, const, ...).
+    "declarations": [],
+    // The name right after one of these is bound (with x as name).
+    "bindAfter": ["as"],
+    // The name right before one of these is bound (name := x).
+    "bindBefore": [":="],
+    // Names between these two words are bound (for x, y in ...).
+    "loops": [["for", "in"]],
+    // Parameters between these two words (lambda a, b: ...).
+    "lambda": ["lambda", ":"],
+    // Statements that name outer variables (never local).
+    "globals": ["global", "nonlocal"]
+  },
+
+  "imports": [
+    { "pattern": "import $entries" },
+    { "pattern": "from $module import $entries" }
+  ],
+
+  // ---- Formatting-only changes -----------------------------------------------
+
+  "formatting": {
+    // Trailing commas: "never" (always meaningful), "safe" (dropped before } and
+    // the ) of a call, or where the group has another comma anyway: (a,) stays a
+    // tuple), "always" (never meaningful).
+    "trailingCommas": "safe",
+    // Semicolons that may be left out: null, or the tokens a next line may not
+    // start with for that (it would continue the statement).
+    "optionalSemicolons": null,
+    // Tokens after which a line break ends the statement, so adding or removing
+    // that line break is a real change (needed where line breaks are otherwise
+    // free, e.g. JavaScript's return). Classes: $name, $number, $string.
+    "lineBreakEndsStatementAfter": [],
+    // Parentheses formatters add to wrap a long line: x = (a + b) is x = a + b
+    // when "(" follows one of "after" and ")" is followed by one of "before"
+    // ($end: end of the statement). With a comma inside only after "tupleAfter".
+    "wrappingParens": {
+      "after": ["=", "return", "assert", "if", "elif", "while", "in", "del", ":", ",", ":=",
+        "+=", "-=", "*=", "/=", "//=", "%=", "|=", "&=", "**="],
+      "before": ["$end", ":", ","],
+      "tupleAfter": ["=", "return"]
+    },
+    // Names that look like calls but aren't, besides keywords (Python 2 statements).
+    "notCalls": ["print", "exec"]
+  },
+
+  // ---- Examples ----------------------------------------------------------------
+  // Checked when the file is uploaded. "expect": "formatting" means every changed
+  // line is formatting only; "real" means at least one is a real change.
+  // "line"/"defines": the names definition search offers on that line.
+  "examples": [
+    { "before": "f(a,  b)\n", "after": "f(\n    a,\n    b,\n)\n", "expect": "formatting" },
+    { "before": "x = 'a'\n", "after": "x = \"a\"\n", "expect": "formatting" },
+    { "before": "x = (a,)\n", "after": "x = (a)\n", "expect": "real" },
+    { "before": "if a:\n    x = 1\n", "after": "if a:\n    pass\nx = 1\n", "expect": "real" },
+    { "line": "async def fetch(self, url):", "defines": ["fetch"] },
+    { "line": "from os.path import join, split as sp", "defines": ["join", "split", "os.path"] }
+  ]
+}

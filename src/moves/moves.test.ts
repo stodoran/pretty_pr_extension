@@ -4,9 +4,15 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
 import { detectMoves, type FileVersions } from './detect';
-import { extractFunctions } from './python/functions';
-import { normalizeFunction } from './python/normalize';
-import { tokenize } from './python/tokenize';
+import { extractDefinitions } from '../lang/definitions';
+import { normalizeDefinition, } from '../lang/normalize';
+import { builtinRegistry } from '../lang/registry';
+import { tokenize as tokenizeWith } from '../lang/tokenize';
+
+const python = builtinRegistry.byId('python')!;
+const tokenize = (src: string) => tokenizeWith(src, python);
+const extractFunctions = (toks: ReturnType<typeof tokenize>, opts?: { includeClasses?: boolean }) => extractDefinitions(toks, python, opts);
+const normalizeFunction = (fn: Parameters<typeof normalizeDefinition>[0]) => normalizeDefinition(fn, python);
 
 describe('tokenizer', () => {
   it('a closing bracket on its own line is not an indent change', () => {
