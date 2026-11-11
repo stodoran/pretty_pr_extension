@@ -43,7 +43,7 @@ export async function analyzeMoves(params: {
   const { minSimilarity } = settings.features.movedCode;
 
   // Cache by diff content (+ threshold): any new push changes the diff.
-  const cacheKey = `moves:v2:${owner}/${repo}#${number}:${minSimilarity}:${await sha1Hex(diffText)}`;
+  const cacheKey = `moves:v3:${owner}/${repo}#${number}:${minSimilarity}:${await sha1Hex(diffText)}`;
   const cached = memoryCache.get(cacheKey) ?? ((await browser.storage.session.get(cacheKey))[cacheKey] as MovesResult | undefined);
   if (cached) return cached;
 

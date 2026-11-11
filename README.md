@@ -4,29 +4,41 @@ Chrome extension (MV3, WXT + TypeScript) for calmer GitHub PR reviews. Works wit
 
 ## Features
 
+Screenshots are from the [demo PR](https://github.com/stodoran/pretty_pr_extension/pull/1), which has one of each case (see [demo/README.md](demo/README.md)).
+
 ### Moved code
 
-Python functions and classes that moved, even renamed or modified, are tinted and labelled. Click a label to jump to the other end; **Show** lists every move, with a side-by-side **Compare** for modified ones.
+Python functions and classes that moved, even renamed or modified, are tinted and labelled: purple when unchanged, orange when modified. Click a label to jump to the other end; **Show** lists every move, with a side-by-side **Compare** for modified ones.
 
-![Moved functions labelled in the diff, with the moved-code panel open](docs/screenshots/moved-code.png)
+![A moved function labelled in the diff, with the moved-code panel open](docs/screenshots/moved-code.png)
 
-### Auto-viewed tests and docs
+### Formatting-only changes
 
-Test and markdown files are marked as *Viewed* as they load, tagged **auto** so you can tell them apart from files you viewed yourself. Un-view one and it's left alone on that PR.
+Lines whose only change is formatting fade most of the way back to the page background. That covers whitespace, line wrapping, quote style, trailing commas, optional semicolons, reordered imports and re-indentation caused by a nearby real change. Comment and docstring changes spanning more than one line fade too. Hover one to highlight its section and see why it faded, for example *formatting: indentation* or *comment changes*. If any line of a statement really changed, the whole statement stays highlighted.
 
-![Test files collapsed and tagged "auto"](docs/screenshots/auto-viewed.png)
+It works from the diff alone and knows Python, JS/TS, the C-family languages and CSS. For other files, only trailing whitespace counts as formatting. Markdown and plain text are never treated this way.
+
+![A removed try/except: the re-indented body faded and labelled "formatting: indentation", the real changes in full color](docs/screenshots/formatting.png)
+
+### Auto-viewed files
+
+Files are marked as *Viewed* as they load when they're tests or markdown (tagged **auto**) or when every change in them is formatting (tagged **format**), so you can tell them apart from files you viewed yourself. Un-view one and it's left alone on that PR.
+
+![A reformatted file tagged "format" and a test file tagged "auto"](docs/screenshots/auto-viewed.png)
 
 ### Definition search
 
-Hover a `def`, `class` or `import` line to search the repo (default branch) for that name.
+Hover any line of a Python function or class to get a search button on its `def`/`class` line (on import lines, one per imported name). It searches the repo's default branch for that name.
 
-![Search button next to a function definition](docs/screenshots/definition-search.png)
+![Search button on a function's def line](docs/screenshots/definition-search.png)
 
 ### Settings
 
-Toggle features, pick each feature's color, and choose which files are auto-viewed, with per-org and per-repo overrides.
+Toggle features, pick each feature's color and how strongly formatting-only lines fade, and choose which files are auto-viewed, with per-org and per-repo overrides.
 
-![Settings: features and colors](docs/screenshots/settings.png)
+![Settings: features](docs/screenshots/settings.png)
+
+![Settings: colors and the formatting fade](docs/screenshots/settings-colors.png)
 
 ![Settings: auto-viewed file patterns and overrides](docs/screenshots/settings-patterns.png)
 

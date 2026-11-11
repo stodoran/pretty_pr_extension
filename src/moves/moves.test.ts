@@ -7,6 +7,14 @@ import { detectMoves, type FileVersions } from './detect';
 import { extractFunctions } from './python/functions';
 import { normalizeFunction } from './python/normalize';
 import { tokenize } from './python/tokenize';
+
+describe('tokenizer', () => {
+  it('a closing bracket on its own line is not an indent change', () => {
+    const types = tokenize(`class A:\n    def f(\n        a,\n    ) -> int:\n        return a\n`).map((t) => t.type);
+    expect(types.filter((t) => t === 'DEDENT')).toHaveLength(2); // only at the end
+    expect(types.indexOf('DEDENT')).toBeGreaterThan(types.lastIndexOf('INDENT'));
+  });
+});
 import { parseUnifiedDiff, reverseApply, sideFromDiff } from './unified-diff';
 
 // ---- helpers: build a real `git diff` between two trees --------------------

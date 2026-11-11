@@ -22,12 +22,15 @@
           <input type="number" id="moved-similarity" min="0.4" max="1" step="0.05" />
         </div>
         <label class="check indent"><input type="checkbox" id="moved-dim" /> Dim functions that moved without changes</label>
+        <label class="check"><input type="checkbox" id="feat-formatting" /> Detect formatting-only changes (whitespace, wrapping, quotes, trailing commas, import order) and comment-only changes</label>
+        <label class="check indent"><input type="checkbox" id="fmt-dim" /> Dim formatting- and comment-only lines</label>
+        <label class="check indent"><input type="checkbox" id="fmt-autoview" /> Mark files with only formatting changes as viewed</label>
         <label class="check"><input type="checkbox" id="feat-definitionSearch" /> Search buttons on Python definitions (def / class / import), searching the default branch</label>
       </section>
 
       <section>
         <h2>Colors</h2>
-        <p class="hint">Each feature has its own color. Changes apply to open PR tabs as soon as you save.</p>
+        <p class="hint">Each feature has its own color. The fade sets how far formatting-only lines fade from red/green toward the page background. Changes apply to open PR tabs as soon as you save.</p>
         <div id="colors"></div>
       </section>
 

@@ -1,7 +1,7 @@
 import type { ContentScriptContext } from 'wxt/utils/content-script-context';
 import { createReactUiAdapter } from '../github/dom/react-ui';
 import { parsePrUrl, prKey } from '../github/pr';
-import { pruneAutoViewMemory } from '../features/auto-view-tests/memory';
+import { pruneAutoViewMemory } from './auto-view-memory';
 import type { Feature } from './feature';
 import { isContextValid, isInvalidationError } from './lifecycle';
 import { call, type TabState } from './messaging';
@@ -67,7 +67,7 @@ export function startRegistry(wxt: ContentScriptContext, features: Feature[]): v
       return handleError(err, (msg) => dock.set('core', { tone: 'error', text: `Pretty PR Review: ${msg}` }));
     }
     if (controller.signal.aborted) return;
-    applyColors(settings.colors);
+    applyColors(settings.colors, settings.features.formatting.fade);
 
     const runs: Promise<void>[] = [];
     for (const feature of features) {
@@ -92,11 +92,11 @@ export function startRegistry(wxt: ContentScriptContext, features: Feature[]): v
     if (!isContextValid()) teardown();
   }, CONTEXT_CHECK_MS);
 
-  // Colors apply live when changed in settings (other settings on the next page load).
+  // Colors and the formatting fade apply live when changed in settings (other settings on the next page load).
   function onStorageChange(changes: Record<string, unknown>, area: string) {
     if (dead || area !== 'sync' || !('settings' in changes)) return;
     loadSettings()
-      .then((s) => applyColors(s.colors))
+      .then((s) => applyColors(s.colors, s.features.formatting.fade))
       .catch((err: unknown) => handleError(err, (msg) => console.warn('[Pretty PR Review]', msg)));
   }
   browser.storage.onChanged.addListener(onStorageChange);

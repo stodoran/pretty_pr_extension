@@ -85,6 +85,20 @@ function colorRows(colors: ColorSettings) {
   }
 }
 
+/** Below the formatting color: how strongly formatting-only lines fade toward the page background. */
+function fadeRow(value: number) {
+  const input = el('input', { type: 'range', id: 'fmt-fade', min: 0, max: 100, step: 5, value: String(value), className: 'grow' });
+  const shown = el('span', { className: 'hint', textContent: `${value}%` });
+  const reset = el('button', { type: 'button', textContent: 'Default (75%)' });
+  input.addEventListener('input', () => (shown.textContent = `${input.value}%`));
+  reset.addEventListener('click', () => {
+    input.value = '75';
+    shown.textContent = '75%';
+  });
+  const label = el('label', { htmlFor: input.id, textContent: 'Formatting-only fade' });
+  $('colors').append(el('div', { className: 'row color' }, label, input, shown, reset));
+}
+
 function readColors(): ColorSettings {
   return Object.fromEntries(
     COLOR_KEYS.map((k) => {
@@ -122,9 +136,13 @@ async function init() {
   $<HTMLInputElement>('moved-similarity').value = String(settings.features.movedCode.minSimilarity);
   $<HTMLInputElement>('moved-dim').checked = settings.features.movedCode.dimUnchanged;
   $<HTMLInputElement>('feat-definitionSearch').checked = settings.features.definitionSearch.enabled;
+  $<HTMLInputElement>('feat-formatting').checked = settings.features.formatting.enabled;
+  $<HTMLInputElement>('fmt-dim').checked = settings.features.formatting.dimLines;
+  $<HTMLInputElement>('fmt-autoview').checked = settings.features.formatting.autoViewFiles;
   $<HTMLTextAreaElement>('defaults').value = settings.testPatterns.defaults.join('\n');
   settings.testPatterns.overrides.forEach(overrideRow);
   colorRows(settings.colors);
+  fadeRow(settings.features.formatting.fade);
 
   $('add-override').addEventListener('click', () => overrideRow());
   $('reset-defaults').addEventListener('click', () => {
@@ -145,6 +163,12 @@ async function init() {
           dimUnchanged: $<HTMLInputElement>('moved-dim').checked,
         },
         definitionSearch: { enabled: $<HTMLInputElement>('feat-definitionSearch').checked },
+        formatting: {
+          enabled: $<HTMLInputElement>('feat-formatting').checked,
+          dimLines: $<HTMLInputElement>('fmt-dim').checked,
+          autoViewFiles: $<HTMLInputElement>('fmt-autoview').checked,
+          fade: Number($<HTMLInputElement>('fmt-fade').value),
+        },
       },
       colors: readColors(),
     };

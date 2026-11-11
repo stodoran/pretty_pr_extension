@@ -23,7 +23,7 @@ export const movedCode: Feature = {
   appliesTo: isFilesTab,
 
   async run({ page, settings, dom, status, signal, reportError }) {
-    status.set({ text: '🔀 Looking for moved code…', autoHideMs: 0 });
+    status.set({ text: '🔀 Looking for moved code…' });
     const result = await call('analyzeMoves', {
       owner: page.owner,
       repo: page.repo,
@@ -73,7 +73,6 @@ export const movedCode: Feature = {
     ].filter(Boolean);
     status.set({
       text: `🔀 ${counts.join(', ')}${modified ? ` (${modified} modified)` : ''}${skippedNote}`,
-      autoHideMs: 0,
       actions: [
         { label: 'Show', onClick: () => panel.toggle() },
         ...(result.skipped.length ? [skippedAction(result.skipped)] : []),

@@ -15,8 +15,20 @@ async function get(url: string): Promise<Response> {
 const repoUrl = (owner: string, repo: string) =>
   `https://github.com/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}`;
 
-export async function fetchPrDiff(owner: string, repo: string, number: number): Promise<string> {
-  return (await get(`${repoUrl(owner, repo)}/pull/${number}.diff`)).text();
+/** Moved-code and formatting analysis both need the diff on page load: fetch it once. */
+const DIFF_TTL_MS = 30_000;
+const diffs = new Map<string, { at: number; text: Promise<string> }>();
+
+export function fetchPrDiff(owner: string, repo: string, number: number): Promise<string> {
+  const url = `${repoUrl(owner, repo)}/pull/${number}.diff`;
+  const now = Date.now();
+  for (const [k, v] of diffs) if (now - v.at > DIFF_TTL_MS) diffs.delete(k);
+  const hit = diffs.get(url);
+  if (hit) return hit.text;
+  const text = get(url).then((r) => r.text());
+  diffs.set(url, { at: now, text });
+  text.catch(() => diffs.delete(url));
+  return text;
 }
 
 /** Head commit = last commit in the PR's `.patch` (fallback when the page didn't expose it). */

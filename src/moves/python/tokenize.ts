@@ -87,6 +87,7 @@ export function tokenize(src: string): Token[] {
       i++;
       continue;
     }
+    atLineStart = false; // a line inside brackets: its closing bracket mustn't be taken for an indent
     if (c === '#') {
       let j = i;
       while (j < n && src[j] !== '\n') j++;

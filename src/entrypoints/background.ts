@@ -2,6 +2,7 @@ import { browser } from 'wxt/browser';
 import { defineBackground } from 'wxt/utils/define-background';
 import type { Rpc, RpcRequest, RpcResponse } from '../core/messaging';
 import { forgetTab, setTabState } from '../core/tab-state';
+import { analyzeFormatting } from '../formatting/analyze';
 import { analyzeMoves } from '../moves/analyze';
 
 type Sender = Parameters<Parameters<typeof browser.runtime.onMessage.addListener>[0]>[1];
@@ -9,6 +10,7 @@ type Handlers = { [K in keyof Rpc]: (params: Rpc[K]['params'], sender: Sender) =
 
 const handlers: Handlers = {
   analyzeMoves: (params) => analyzeMoves(params),
+  analyzeFormatting: (params) => analyzeFormatting(params),
   setTabState: async ({ state }, sender) => (sender.tab?.id === undefined ? null : setTabState(sender.tab.id, state)),
 };
 
