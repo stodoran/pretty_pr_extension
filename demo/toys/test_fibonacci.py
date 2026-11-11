@@ -1,4 +1,4 @@
-from fibonacci import fib_iterative, fib_memo
+from fibonacci import fib_closed_form, fib_iterative, fib_memo
 
 
 def test_small_values():
@@ -8,3 +8,7 @@ def test_small_values():
 def test_memo_matches_iterative():
     for n in range(20):
         assert fib_memo(n) == fib_iterative(n)
+
+
+def test_closed_form():
+    assert fib_closed_form(30) == fib_iterative(30)
