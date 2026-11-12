@@ -6,7 +6,7 @@ import { afterAll, describe, expect, it } from 'vitest';
 import { detectMoves } from '../moves/detect';
 import { parseUnifiedDiff, reverseApply, sideFromDiff, type DiffFile } from '../moves/unified-diff';
 import { readFileSync } from 'node:fs';
-import { classifyFile } from './classify';
+import { classifyFile, hasMarks } from './classify';
 
 /**
  * The demo PR (demo/toys → demo/after, see demo/README.md) as a regression
@@ -82,6 +82,9 @@ const CASES: Record<string, Case[]> = {
   'trailing whitespace': [['sorting.py', '+', 'key = items[i]', 'dim', 'formatting: trailing whitespace']],
   'docstring rewrap': [['shapes.py', '+', '"""A circle given by its centre', 'dim']],
   'docstring text change': [['fibonacci.py', '+', 'this is real code, and it is not maintained.', 'dim', 'comment changes']],
+  'one-line docstring rewritten over two lines (the only change in its file)': [
+    ['epochs.py', '+', '"""Advance the counter up to and including ``epoch``. An earlier epoch is ignored: on a resume,', 'dim', 'comment changes'],
+  ],
   'comment lines added': [['primes.py', '+', '# Classic sieve of Eratosthenes: every multiple of a prime', 'dim', 'comment changes']],
   'single comment line: left alone': [['primes.py', '+', '# trial division', 'real']],
   're-indented by a removed try/except': [
@@ -121,7 +124,10 @@ describe('demo PR', () => {
 
   it('a file that is only reformatted is entirely formatting', () => {
     expect(result('matrix.py').r.whole).toBe(true);
-    for (const p of ['fibonacci.py', 'primes.py', 'shapes.py', 'sorting.py']) expect(result(p).r.whole).toBe(false);
+    for (const p of ['fibonacci.py', 'primes.py', 'shapes.py', 'sorting.py', 'epochs.py']) expect(result(p).r.whole).toBe(false);
+    // Only comment changes: no formatting lines, but still shown.
+    expect(result('epochs.py').r.formatting).toBe(0);
+    expect(hasMarks(result('epochs.py').r)).toBe(true);
   });
 });
 

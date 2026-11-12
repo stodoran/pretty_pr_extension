@@ -44,12 +44,17 @@ export interface FileFormatting {
   whole: boolean;
 }
 
+/** Whether the file has anything to mark: formatting or comment-only lines, or it's entirely formatting. */
+export const hasMarks = (f: FileFormatting) => f.whole || f.left.length + f.right.length > 0;
+
 /** Above this many token pairs (after trimming the common prefix) a hunk isn't aligned. */
 const MAX_LCS_CELLS = 4_000_000;
 
 export function classifyFile(file: DiffFile, registry: Registry = builtinRegistry): FileFormatting | null {
   const path = file.newPath ?? file.oldPath;
   if (!path || file.binary || !file.hunks.length) return null;
+  // Every line of a new (or deleted) file is new: nothing in it is a reformat or a mere comment edit.
+  if (file.status === 'added' || file.status === 'deleted') return null;
   const lang = registry.forPath(path);
   if (!lang?.formatting.enabled) return null;
 
@@ -156,6 +161,7 @@ function classifyHunk(h: Hunk, out: FileFormatting, lang: Language): boolean {
   markLines(neu, partners.b, old, partners.a);
   wholeStatements(old, partners.a, neu, lang);
   matchImports(old, neu, lang);
+  importLines(old, neu, lang);
 
   // Re-indented lines (code moved in/out of a block) look like formatting next
   // to the real change that caused them (a removed `try:`); on their own, a
@@ -518,6 +524,10 @@ interface ImportStmt {
   first: number;
   last: number;
   entries: string[];
+  /** `pattern|module`, the part every entry starts with. */
+  module: string;
+  /** Line → the entries on it. */
+  lineEntries: Map<number, string[]>;
   topLevel: boolean;
 }
 
@@ -542,9 +552,27 @@ export function importStatements(toks: Tok[], lang: Language): ImportStmt[] {
       const m = matchPattern(lang.imports[p]!, view, from, lang.keywords);
       if (!m || (whole && m.end !== code.length)) continue;
       const module = m.module ? code.slice(...m.module).map((t) => t.key).join('') : '';
-      const entries = m.entries ? importEntries(view, m.entries).map((e) => `${p}|${module}|${e.join(' ')}`) : [];
+      const entries: string[] = [];
+      const lineEntries = new Map<number, string[]>();
+      if (m.entries) {
+        // Each entry with the line it starts on.
+        const [from, to] = m.entries;
+        const lines: number[] = [];
+        let line = -1;
+        for (let i = from; i < to; i++) {
+          const k = code[i]!.key;
+          if (k === ',' || k === '(' || k === ')' || k === '{' || k === '}') line = -1;
+          else if (line < 0) lines.push((line = code[i]!.line));
+        }
+        importEntries(view, m.entries).forEach((e, n) => {
+          const entry = `${p}|${module}|${e.join(' ')}`;
+          entries.push(entry);
+          const l = lines[n] ?? head.line;
+          lineEntries.set(l, [...(lineEntries.get(l) ?? []), entry]);
+        });
+      }
       if (!entries.length) entries.push(`${p}|${module}|(side effect)`);
-      stmts.push({ first: head.line, last: code[m.end - 1]!.endLine, entries, topLevel });
+      stmts.push({ first: head.line, last: code[m.end - 1]!.endLine, entries, module: `${p}|${module}`, lineEntries, topLevel });
       return m.end;
     }
     return -1;
@@ -576,6 +604,32 @@ export function importStatements(toks: Tok[], lang: Language): ImportStmt[] {
     if (end > 0) k = end - 1;
   }
   return stmts;
+}
+
+/**
+ * Imports are sets of names, so a changed import line is judged by its names:
+ * one whose names are all imported on the other side too is formatting
+ * (rewrapped, regrouped), one with a new name is real. A line with no names
+ * (`from x import (`, `)`) goes with whether its module was imported before.
+ * Module-level imports only.
+ */
+function importLines(old: Side, neu: Side, lang: Language) {
+  const stmts = [importStatements(old.toks, lang), importStatements(neu.toks, lang)] as const;
+  if (![...stmts[0], ...stmts[1]].every((st) => st.topLevel)) return;
+  ([[old, 0], [neu, 1]] as const).forEach(([s, i]) => {
+    const other = stmts[1 - i]!;
+    const entries = new Set(other.flatMap((st) => st.entries));
+    const modules = new Set(other.map((st) => st.module));
+    for (const st of stmts[i]!) {
+      for (let l = st.first; l <= st.last; l++) {
+        if (!s.lines[l]?.changed || s.imports.has(l)) continue; // already "imports reordered"
+        const here = st.lineEntries.get(l);
+        const kept = here ? here.every((e) => entries.has(e)) : modules.has(st.module);
+        if (kept) s.real.delete(l);
+        else s.real.add(l);
+      }
+    }
+  });
 }
 
 /**

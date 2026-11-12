@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
 import { parseUnifiedDiff } from '../moves/unified-diff';
-import { classifyFile, describeFormatting, type FileFormatting } from './classify';
+import { classifyFile, describeFormatting, hasMarks, type FileFormatting } from './classify';
 
 const dirs: string[] = [];
 afterAll(() => dirs.forEach((d) => rmSync(d, { recursive: true, force: true })));
@@ -83,6 +83,36 @@ describe('formatting-only changes', () => {
   it('docstrings count as comments', () => {
     const r = classify('a.py', `def f():\n    """Old text.\n\n    More.\n    """\n`, `def f():\n    """New text.\n\n    More!\n    """\n`);
     expect(r.blocks.map((b) => b.reason)).toEqual(['comment changes']);
+  });
+
+  it('a one-line docstring rewritten over two lines is a comment change, and the file is shown (reported case)', () => {
+    const body = '\n        if epoch < self._through:\n            return\n';
+    const r = classify(
+      'a.py',
+      `class S:\n    def set_epoch(self, epoch: int) -> None:\n        """Advance up to \`\`epoch\`\`."""\n${body}`,
+      `class S:\n    def set_epoch(self, epoch: int) -> None:\n        """Advance up to \`\`epoch\`\`. An earlier epoch is ignored: on a resume,\n        accelerate's loader calls \`\`set_epoch(0)\`\`."""\n${body}`,
+    );
+    expect(r.blocks.map((b) => [b.left, b.right, b.reason])).toEqual([[[3], [3, 4], 'comment changes']]);
+    expect(r.formatting).toBe(0); // comments aren't formatting...
+    expect(hasMarks(r)).toBe(true); // ...but the file still has lines to mark
+  });
+
+  it('a rewrapped import with new names: only the new names are real (reported case)', () => {
+    const r = classify(
+      'a.py',
+      `import os\nfrom pkg.config import init_opt, load_yaml\n\nx = 1\n`,
+      `import os\nfrom pkg.resume import checkpoint\nfrom pkg.config import (\n    create_opt,\n    init_opt,\n    load_yaml,\n    validate,\n)\n\nx = 1\n`,
+    );
+    expect(r.left).toEqual([2]);
+    expect(r.right).toEqual([3, 5, 6, 8]);
+  });
+
+  it('new and deleted files have nothing to mark', () => {
+    const diff = (status: string, sign: string) =>
+      `diff --git a/a.py b/a.py\n${status} file mode 100644\nindex 0000000..1111111\n--- ${sign === '+' ? '/dev/null' : 'a/a.py'}\n+++ ${sign === '+' ? 'b/a.py' : '/dev/null'}\n@@ ${sign === '+' ? '-0,0 +1,6' : '-1,6 +0,0'} @@\n` +
+      ['def f():', '    """Docs over', '    two lines."""', '    # a comment', '    # and another', '    return g(a,b)'].map((l) => sign + l).join('\n') + '\n';
+    expect(classifyFile(parseUnifiedDiff(diff('new', '+'))[0]!)).toBeNull();
+    expect(classifyFile(parseUnifiedDiff(diff('deleted', '-'))[0]!)).toBeNull();
   });
 
   it('comment-only changes', () => {
