@@ -16,6 +16,8 @@ export interface DiffDomAdapter {
   isViewed(fileEl: HTMLElement): boolean | null;
   /** Clicks the Viewed toggle (GitHub persists the state itself). Returns false if not found. */
   toggleViewed(fileEl: HTMLElement): boolean;
+  /** The file's body (everything under its header), or null while collapsed. Rebuilt when the file is expanded again. */
+  fileBody(fileEl: HTMLElement): HTMLElement | null;
   /** Cells (line number + code) for one line on one side of a rendered file diff. */
   lineCells(fileEl: HTMLElement, side: 'left' | 'right', line: number): HTMLElement[];
   /** Calls `cb` with file containers that were added or re-rendered. Returns an unsubscribe fn. */

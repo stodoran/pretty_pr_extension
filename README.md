@@ -4,29 +4,55 @@ Chrome extension (MV3, WXT + TypeScript) for calmer GitHub PR reviews. Works wit
 
 ## Features
 
+Screenshots are from the Python [demo PR](https://github.com/stodoran/pretty_pr_extension/pull/1), which has one of each case; [PR #2](https://github.com/stodoran/pretty_pr_extension/pull/2) is the same for TypeScript (see [demo/README.md](demo/README.md)).
+
 ### Moved code
 
-Python functions and classes that moved, even renamed or modified, are tinted and labelled. Click a label to jump to the other end; **Show** lists every move, with a side-by-side **Compare** for modified ones.
+Functions and classes that moved, even renamed or modified, are tinted and labelled: purple when unchanged, orange when modified. Click a label to jump to the other end; **Show** lists every move, with a side-by-side **Compare** for modified ones.
 
-![Moved functions labelled in the diff, with the moved-code panel open](docs/screenshots/moved-code.png)
+![A moved function labelled in the diff, with the moved-code panel open](docs/screenshots/moved-code.png)
 
-### Auto-viewed tests and docs
+### Formatting-only changes
 
-Test and markdown files are marked as *Viewed* as they load, tagged **auto** so you can tell them apart from files you viewed yourself. Un-view one and it's left alone on that PR.
+Lines whose only change is formatting fade most of the way back to the page background. That covers whitespace, line wrapping, quote style, trailing commas, optional semicolons, reordered imports and re-indentation caused by a nearby real change. Comment and docstring changes spanning more than one line fade too. Hover one to highlight its section and see why it faded, for example *formatting: indentation* or *comment changes*. If any line of a statement really changed, the whole statement stays highlighted.
 
-![Test files collapsed and tagged "auto"](docs/screenshots/auto-viewed.png)
+It works from the diff alone, in any language with a language file (see [Languages](#languages)).
+
+![A removed try/except: the re-indented body faded and labelled "formatting: indentation", the real changes in full color](docs/screenshots/formatting.png)
+
+### Auto-viewed files
+
+Files are marked as *Viewed* as they load when they're tests or markdown (tagged **auto**) or when every change in them is formatting (tagged **format**), so you can tell them apart from files you viewed yourself. Un-view one and it's left alone on that PR.
+
+![A reformatted file tagged "format" and a test file tagged "auto"](docs/screenshots/auto-viewed.png)
 
 ### Definition search
 
-Hover a `def`, `class` or `import` line to search the repo (default branch) for that name.
+Hover any line of a function or class to get a search button on its definition line (on import lines, one per imported name). It searches the repo's default branch for that name.
 
-![Search button next to a function definition](docs/screenshots/definition-search.png)
+![Search button on a function's def line](docs/screenshots/definition-search.png)
+
+### Readable JSON diffs
+
+Minified JSON changes as one huge line, which GitHub doesn't even render by default. For each modified `.json` file minified onto one line, the extension formats both versions (arrays and objects that fit stay on one line, every value keeps its exact text) and shows their diff in place of GitHub's, split or unified to match your diff view setting. A button in the file switches to GitHub's diff and back. JSON files with several lines are left to GitHub. Each hunk is headed by where it is in the document (`field_groups[12] › fields[2] “Client Name” › description`, using a `name`/`title`/`id` field when there is one), and the changed words are marked. Files that are the same JSON once formatted say so.
+
+It doesn't need GitHub's PR diff, so it also works on PRs too large for one. Files load as they scroll into view, a few at a time.
+
+### Languages
+
+Each language is described by a **language file**: JSON with comments describing the language's strings and comments, how blocks work, what definitions and imports look like, which names are local, and what counts as formatting. Every feature reads the same file. [Python](languages/python.jsonc) and [TypeScript/JavaScript](languages/typescript.jsonc) are built in.
+
+To add a language for yourself, download [python.jsonc](languages/python.jsonc) from the settings page (every key is explained in it), adapt it, and upload it. Uploads are validated, and the file's own `examples` (before/after pairs and definition lines) must hold. A file whose `id` matches a built-in language replaces it. Languages where a definition has no keyword (C, Java) aren't supported.
+
+![Settings: languages](docs/screenshots/settings-languages.png)
 
 ### Settings
 
-Toggle features, pick each feature's color, and choose which files are auto-viewed, with per-org and per-repo overrides.
+Toggle features, add or switch off languages, pick each feature's color and how strongly formatting-only lines fade, and choose which files are auto-viewed, with per-org and per-repo overrides.
 
-![Settings: features and colors](docs/screenshots/settings.png)
+![Settings: features](docs/screenshots/settings.png)
+
+![Settings: colors and the formatting fade](docs/screenshots/settings-colors.png)
 
 ![Settings: auto-viewed file patterns and overrides](docs/screenshots/settings-patterns.png)
 
@@ -44,11 +70,27 @@ No GitHub token is needed. The extension clicks GitHub's own Viewed toggles, and
 
 `npm run dev` runs WXT with hot reload, using a separate Chrome profile.
 
+## Contributing a language
+
+A language file that works for you can ship with the extension:
+
+1. Add `languages/<id>.jsonc` (the file name must match its `id`). Start from [python.jsonc](languages/python.jsonc) for an indentation language or [typescript.jsonc](languages/typescript.jsonc) for a brace language.
+2. Register it in `BUILTIN_LANGUAGES` in [`src/lang/registry.ts`](src/lang/registry.ts).
+3. Give it `examples`: at least one formatting-only and one real before/after pair for each formatting rule you rely on (especially the risky ones, such as optional semicolons or line breaks that end statements), plus `line`/`defines` pairs for every definition and import pattern. They run on upload and in the tests.
+4. Run `npm test`. [`lang.test.ts`](src/lang/lang.test.ts) loads every file in `languages/`, runs its examples and checks it's registered. Add tests there for anything the examples can't express (moves, highlighting, nested definitions).
+5. For a bigger language, add a demo under `demo/<language>/` with a regression test like [`demo-typescript.test.ts`](src/formatting/demo-typescript.test.ts), and open a demo PR so reviewers can see it on GitHub (see [demo/README.md](demo/README.md)).
+6. Check it on a few real PRs with the unpacked build, then open a PR.
+
+When in doubt, make a rule stricter: a change wrongly shown as formatting can hide a real change from a reviewer, while the opposite only costs a second look.
+
 ## Layout
 
 | Path | Role |
 | --- | --- |
 | `src/core/registry.ts` | Detects PR pages (including SPA navigation) and runs enabled features |
+| `languages/*.jsonc` | Built-in language files (Python, TypeScript/JavaScript) |
+| `src/json/` | Readable JSON diffs: token-preserving formatter with paths, Myers line diff, hunks |
+| `src/lang/` | The language engine: file format and validation, tokenizer, definitions, normalization for moved code, highlighting |
 | `src/core/feature.ts` | `Feature` interface: add new augmentations as modules in `src/features/` |
 | `src/core/test-files.ts` | Pure glob classifier (defaults → `owner/*` → `owner/repo`, last match wins, `!` negates) |
 | `src/github/dom/` | All GitHub-markup knowledge (`DiffDomAdapter`), so UI changes break only this layer |

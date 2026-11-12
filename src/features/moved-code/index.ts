@@ -4,11 +4,12 @@ import { call } from '../../core/messaging';
 import { diffAnchorId, type DiffDomAdapter } from '../../github/dom/adapter';
 import { isFilesTab } from '../../github/pr';
 import type { FunctionLocation, MovedFunction } from '../../moves/detect';
+import { loadRegistry } from '../../lang/storage';
 import { MovesPanel } from './panel';
 import { injectMoveStyles, isOverLabel } from './styles';
 
 /**
- * Marks Python functions that moved (possibly renamed/modified) in the diff:
+ * Marks functions and classes that moved (possibly renamed/modified) in the diff:
  * a colored gutter on the moved lines, a "moved to/from" label on the first
  * line, dimming for unchanged moves, and a panel listing all moves with
  * jump links and a function-level compare view.
@@ -23,7 +24,7 @@ export const movedCode: Feature = {
   appliesTo: isFilesTab,
 
   async run({ page, settings, dom, status, signal, reportError }) {
-    status.set({ text: '🔀 Looking for moved code…', autoHideMs: 0 });
+    status.set({ text: '🔀 Looking for moved code…' });
     const result = await call('analyzeMoves', {
       owner: page.owner,
       repo: page.repo,
@@ -32,7 +33,7 @@ export const movedCode: Feature = {
     });
     if (signal.aborted) return;
     console.info(
-      `[Pretty PR Review] moved-code: ${result.moves.length} move(s) across ${result.analyzedFiles} Python file(s), ${result.skipped.length} skipped`,
+      `[Pretty PR Review] moved-code: ${result.moves.length} move(s) across ${result.analyzedFiles} file(s), ${result.skipped.length} skipped`,
     );
 
     const skippedNote = result.skipped.length ? ` · ${result.skipped.length} file(s) not analysed` : '';
@@ -53,7 +54,7 @@ export const movedCode: Feature = {
     const jump = (loc: FunctionLocation, side: 'left' | 'right') => void goTo(dom, loc, side).catch(reportError);
     watchLabelClicks(result.moves, jump, signal);
 
-    const panel = new MovesPanel(result.moves, { goTo: jump });
+    const panel = new MovesPanel(result.moves, { goTo: jump }, await loadRegistry());
     signal.addEventListener(
       'abort',
       () => {
@@ -73,7 +74,6 @@ export const movedCode: Feature = {
     ].filter(Boolean);
     status.set({
       text: `🔀 ${counts.join(', ')}${modified ? ` (${modified} modified)` : ''}${skippedNote}`,
-      autoHideMs: 0,
       actions: [
         { label: 'Show', onClick: () => panel.toggle() },
         ...(result.skipped.length ? [skippedAction(result.skipped)] : []),

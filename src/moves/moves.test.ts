@@ -4,9 +4,23 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
 import { detectMoves, type FileVersions } from './detect';
-import { extractFunctions } from './python/functions';
-import { normalizeFunction } from './python/normalize';
-import { tokenize } from './python/tokenize';
+import { extractDefinitions } from '../lang/definitions';
+import { normalizeDefinition, } from '../lang/normalize';
+import { builtinRegistry } from '../lang/registry';
+import { tokenize as tokenizeWith } from '../lang/tokenize';
+
+const python = builtinRegistry.byId('python')!;
+const tokenize = (src: string) => tokenizeWith(src, python);
+const extractFunctions = (toks: ReturnType<typeof tokenize>, opts?: { includeClasses?: boolean }) => extractDefinitions(toks, python, opts);
+const normalizeFunction = (fn: Parameters<typeof normalizeDefinition>[0]) => normalizeDefinition(fn, python);
+
+describe('tokenizer', () => {
+  it('a closing bracket on its own line is not an indent change', () => {
+    const types = tokenize(`class A:\n    def f(\n        a,\n    ) -> int:\n        return a\n`).map((t) => t.type);
+    expect(types.filter((t) => t === 'DEDENT')).toHaveLength(2); // only at the end
+    expect(types.indexOf('DEDENT')).toBeGreaterThan(types.lastIndexOf('INDENT'));
+  });
+});
 import { parseUnifiedDiff, reverseApply, sideFromDiff } from './unified-diff';
 
 // ---- helpers: build a real `git diff` between two trees --------------------

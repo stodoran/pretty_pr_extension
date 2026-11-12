@@ -1,12 +1,14 @@
-import { extractFunctions, type PyFunction } from './python/functions';
-import { normalizeFunction } from './python/normalize';
-import { tokenize } from './python/tokenize';
+import { extractDefinitions, type Definition } from '../lang/definitions';
+import type { Language } from '../lang/language';
+import { normalizeDefinition } from '../lang/normalize';
+import { builtinRegistry, type Registry } from '../lang/registry';
+import { tokenize } from '../lang/tokenize';
 import { mapOldToNew, type DiffFile } from './unified-diff';
 
 /**
  * Moved-function detection. Pure (no browser APIs) so it is unit-testable.
  *
- * 1. Parse base and head versions of every changed Python file.
+ * 1. Parse base and head versions of every changed file in a known language.
  * 2. A base function is "removed" if most of its lines are deleted in the diff;
  *    a head function is "added" if most of its lines are new.
  * 3. Normalize (rename locals, drop comments/docstrings/formatting) and pair
@@ -40,6 +42,8 @@ export interface MovedFunction {
   kind: MoveKind;
   /** What moved: a function/method or a whole class. */
   defKind: 'def' | 'class';
+  /** Language id (for highlighting). */
+  lang: string;
   renamed: boolean;
   /** 1 for identical normalized bodies; otherwise LCS-based token similarity. */
   similarity: number;
@@ -60,7 +64,8 @@ export interface DetectOptions {
 export const DEFAULT_DETECT_OPTIONS: DetectOptions = { minSimilarity: 0.65, minTokens: 25, minClassTokens: 15, minChangedFraction: 0.6 };
 
 interface Candidate {
-  fn: PyFunction;
+  fn: Definition;
+  lang: Language;
   file: DiffFile;
   side: 'from' | 'to';
   norm: string[];
@@ -110,14 +115,14 @@ function changedLines(file: DiffFile, side: 'old' | 'new'): Set<number> {
   return s;
 }
 
-function candidates(fv: FileVersions, side: 'from' | 'to', opts: DetectOptions): Candidate[] {
+function candidates(fv: FileVersions, side: 'from' | 'to', opts: DetectOptions, lang: Language): Candidate[] {
   const source = side === 'from' ? fv.base : fv.head;
   if (source === null) return [];
   const whole = side === 'from' ? fv.diff.status === 'deleted' : fv.diff.status === 'added';
   const changed = changedLines(fv.diff, side === 'from' ? 'old' : 'new');
   const lines = source.split('\n');
   const out: Candidate[] = [];
-  const defs = extractFunctions(tokenize(source), { includeClasses: true });
+  const defs = extractDefinitions(tokenize(source, lang), lang, { includeClasses: true });
   for (const fn of defs) {
     if (!whole) {
       let total = 0;
@@ -129,10 +134,11 @@ function candidates(fv: FileVersions, side: 'from' | 'to', opts: DetectOptions):
       }
       if (!total || hit / total < opts.minChangedFraction) continue;
     }
-    const norm = normalizeFunction(fn, defs);
+    const norm = normalizeDefinition(fn, lang, defs);
     if (norm.length < (fn.kind === 'class' ? opts.minClassTokens : opts.minTokens)) continue;
     out.push({
       fn,
+      lang,
       file: fv.diff,
       side,
       norm,
@@ -164,15 +170,19 @@ function location(c: Candidate): FunctionLocation {
   };
 }
 
-export function detectMoves(files: FileVersions[], options: Partial<DetectOptions> = {}): MovedFunction[] {
+export function detectMoves(files: FileVersions[], options: Partial<DetectOptions> = {}, registry: Registry = builtinRegistry): MovedFunction[] {
   const opts = { ...DEFAULT_DETECT_OPTIONS, ...options };
-  const removed = files.flatMap((f) => candidates(f, 'from', opts));
-  const added = files.flatMap((f) => candidates(f, 'to', opts));
+  const withLang = files.flatMap((f) => {
+    const lang = registry.forPath((f.diff.newPath ?? f.diff.oldPath)!);
+    return lang ? [{ f, lang }] : [];
+  });
+  const removed = withLang.flatMap(({ f, lang }) => candidates(f, 'from', opts, lang));
+  const added = withLang.flatMap(({ f, lang }) => candidates(f, 'to', opts, lang));
 
   const pairs: { r: Candidate; a: Candidate; score: number }[] = [];
   for (const r of removed) {
     for (const a of added) {
-      if (r.fn.kind !== a.fn.kind || isInPlace(r, a)) continue;
+      if (r.fn.kind !== a.fn.kind || r.lang !== a.lang || isInPlace(r, a)) continue;
       if (r.key === a.key) {
         pairs.push({ r, a, score: 1 });
         continue;
@@ -208,6 +218,7 @@ export function detectMoves(files: FileVersions[], options: Partial<DetectOption
     id: `m${i}`,
     kind: p.score === 1 ? 'moved' : 'moved-modified',
     defKind: p.r.fn.kind,
+    lang: p.r.lang.id,
     renamed: p.r.fn.name !== p.a.fn.name,
     similarity: Math.round(p.score * 100) / 100,
     from: location(p.r),

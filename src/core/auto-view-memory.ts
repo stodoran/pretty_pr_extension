@@ -4,12 +4,13 @@ import { browser } from 'wxt/browser';
  * Per-PR path sets kept in storage.local:
  *  - userUnviewed: files the user deliberately un-viewed (toggle or "Undo");
  *    never auto-marked again on that PR.
+ *  (and the same pair, prefixed `format`, for formatting-only files)
  *  - autoViewed: files the extension marked as viewed (and the user hasn't
  *    touched since), so they can be tagged "auto" on later visits too.
  */
-export type PathSetKind = 'userUnviewed' | 'autoViewed';
+export type PathSetKind = 'userUnviewed' | 'autoViewed' | 'formatUserUnviewed' | 'formatAutoViewed';
 
-const KINDS: PathSetKind[] = ['userUnviewed', 'autoViewed'];
+const KINDS: PathSetKind[] = ['userUnviewed', 'autoViewed', 'formatUserUnviewed', 'formatAutoViewed'];
 const MAX_AGE_MS = 60 * 24 * 60 * 60 * 1000;
 
 interface Entry {

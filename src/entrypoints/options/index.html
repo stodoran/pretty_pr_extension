@@ -16,18 +16,37 @@
       <section>
         <h2>Features</h2>
         <label class="check"><input type="checkbox" id="feat-autoViewTests" /> Auto-mark test and markdown files as viewed on “Files changed”</label>
-        <label class="check"><input type="checkbox" id="feat-movedCode" /> Highlight moved Python functions (including renamed/modified ones)</label>
+        <label class="check"><input type="checkbox" id="feat-movedCode" /> Highlight moved functions and classes (including renamed/modified ones)</label>
         <div class="row indent">
           <label for="moved-similarity">Minimum similarity for a modified function</label>
           <input type="number" id="moved-similarity" min="0.4" max="1" step="0.05" />
         </div>
         <label class="check indent"><input type="checkbox" id="moved-dim" /> Dim functions that moved without changes</label>
-        <label class="check"><input type="checkbox" id="feat-definitionSearch" /> Search buttons on Python definitions (def / class / import), searching the default branch</label>
+        <label class="check"><input type="checkbox" id="feat-formatting" /> Detect formatting-only changes (whitespace, wrapping, quotes, trailing commas, import order) and comment-only changes</label>
+        <label class="check indent"><input type="checkbox" id="fmt-dim" /> Dim formatting- and comment-only lines</label>
+        <label class="check indent"><input type="checkbox" id="fmt-autoview" /> Mark files with only formatting changes as viewed</label>
+        <label class="check"><input type="checkbox" id="feat-definitionSearch" /> Search buttons on definitions and imports, searching the default branch</label>
+        <label class="check"><input type="checkbox" id="feat-readableJson" /> Readable diffs for minified JSON files (formatted, with where in the document each change is)</label>
+      </section>
+
+      <section>
+        <h2>Languages</h2>
+        <p class="hint">
+          Each language is described by a language file (JSON with comments): its tokens, where functions and classes are,
+          and what counts as formatting. All features use it. Python and TypeScript/JavaScript are built in; download either as a
+          template (every key is explained in python.jsonc), edit it, and upload it. A file with the id of a built-in language replaces it.
+          Changes apply right away; reload open PR tabs.
+        </p>
+        <div id="languages"></div>
+        <div class="row">
+          <label class="button">Upload language file…<input type="file" id="lang-upload" accept=".jsonc,.json,application/json" hidden /></label>
+        </div>
+        <pre id="lang-status" class="hint"></pre>
       </section>
 
       <section>
         <h2>Colors</h2>
-        <p class="hint">Each feature has its own color. Changes apply to open PR tabs as soon as you save.</p>
+        <p class="hint">Each feature has its own color. The fade sets how far formatting-only lines fade from red/green toward the page background. Changes apply to open PR tabs as soon as you save.</p>
         <div id="colors"></div>
       </section>
 

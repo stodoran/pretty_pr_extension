@@ -7,6 +7,7 @@ import type { DiffDomAdapter } from './adapter';
  *   file container:  [role=region][id^="diff-"]   (id = diff-<sha256(path)>)
  *   file path:       [data-file-path] inside it, else the heading named by aria-labelledby
  *   viewed toggle:   button[aria-pressed] labelled "Viewed" / "Not Viewed"
+ *   file body:       the region's child after [data-diff-header-wrapper] (removed while collapsed)
  *   diff line cells: td[data-diff-side=left|right][data-line-number=N]  (verified in split view)
  */
 const FILE_SELECTOR = '[role="region"][id^="diff-"]';
@@ -36,6 +37,11 @@ export function createReactUiAdapter(): DiffDomAdapter {
     isViewed(el) {
       const btn = viewedToggle(el);
       return btn ? btn.getAttribute('aria-pressed') === 'true' : null;
+    },
+    fileBody(el) {
+      const header = el.querySelector(':scope > [data-diff-header-wrapper]');
+      const body = header?.nextElementSibling;
+      return body instanceof HTMLElement ? body : null;
     },
     lineCells(el, side, line) {
       return Array.from(el.querySelectorAll<HTMLElement>(`td[data-diff-side="${side}"][data-line-number="${line}"]`));

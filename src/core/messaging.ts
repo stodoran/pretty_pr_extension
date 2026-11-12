@@ -1,4 +1,7 @@
 import { browser } from 'wxt/browser';
+import type { FormattingResult } from '../formatting/analyze';
+import type { ReadableJson } from '../json/diff';
+import type { ReadableJsonParams } from '../json/analyze';
 import type { MovesResult } from '../moves/analyze';
 
 /**
@@ -10,6 +13,12 @@ export interface Rpc {
     params: { owner: string; repo: string; number: number; headOid: string | null };
     result: MovesResult;
   };
+  analyzeFormatting: {
+    params: { owner: string; repo: string; number: number };
+    result: FormattingResult;
+  };
+  /** One JSON file's two versions, formatted and diffed. */
+  readableJson: { params: ReadableJsonParams; result: ReadableJson };
   /** Toolbar badge for the calling tab: animated while features are working, "!" after an error. */
   setTabState: { params: { state: TabState }; result: null };
 }

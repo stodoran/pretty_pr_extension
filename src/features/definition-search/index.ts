@@ -1,11 +1,14 @@
 import { COLORS } from '../../core/ui/colors';
 import type { Feature } from '../../core/feature';
 import { isFilesTab } from '../../github/pr';
-import { definitionTerms, enclosingDefinitions, repoSearchUrl, type DiffRow } from './terms';
+import { browser } from 'wxt/browser';
+import { LANGUAGES_KEY } from '../../lang/registry';
+import { loadRegistry } from '../../lang/storage';
+import { enclosingDefinitions, importTerms, repoSearchUrl, type DiffRow } from './terms';
 
 /**
- * Hovering any line of a Python function or class in the diff shows a small
- * "search" pill on that definition's `def`/`class` line (and on the lines of
+ * Hovering any line of a function or class in the diff (in a language with a
+ * language file) shows a small "search" pill on that definition's line (and on the lines of
  * the definitions enclosing it); on an import line, pills for the imported
  * names appear on that line. Each opens GitHub code search for the name in the
  * repo. GitHub code search only indexes the default branch, so that's what is
@@ -14,11 +17,8 @@ import { definitionTerms, enclosingDefinitions, repoSearchUrl, type DiffRow } fr
  * The pills live in an absolutely positioned overlay in our own shadow root (nothing
  * is inserted into GitHub's React-managed cells).
  */
-const PYTHON = /\.pyi?$/;
-
 /** The code itself, without GitHub's leading "+"/"-" diff marker. */
 const codeOf = (cell: HTMLElement): HTMLElement => cell.querySelector<HTMLElement>('.diff-text-inner') ?? cell;
-const IMPORT_LINE = /^\s*(?:from|import)\s/;
 
 /** A row to put pills on: a definition's line (or hunk header), with the names to search. */
 interface Anchor {
@@ -70,6 +70,13 @@ export const definitionSearch: Feature = {
     root.append(style);
     document.body.append(host);
     signal.addEventListener('abort', () => host.remove(), { once: true });
+
+    let registry = await loadRegistry();
+    const onStorage = (changes: Record<string, unknown>, area: string) => {
+      if (area === 'local' && LANGUAGES_KEY in changes) void loadRegistry().then((r) => (registry = r));
+    };
+    browser.storage.onChanged.addListener(onStorage);
+    signal.addEventListener('abort', () => browser.storage.onChanged.removeListener(onStorage), { once: true });
 
     let currentCell: HTMLElement | null = null;
     let current: Anchor[] = [];
@@ -126,15 +133,14 @@ export const definitionSearch: Feature = {
     const anchorsFor = (cell: HTMLElement): Anchor[] => {
       const region = dom.fileElementOf(cell);
       const path = region && dom.filePath(region);
-      if (!region || !path || !PYTHON.test(path)) return [];
+      const lang = region && path ? registry.forPath(path) : null;
+      if (!region || !lang) return [];
       const text = codeOf(cell).textContent ?? '';
-      if (IMPORT_LINE.test(text)) {
-        const names = definitionTerms(text);
-        return names.length ? [{ el: cell, names }] : [];
-      }
+      const imported = importTerms(text, lang);
+      if (imported) return imported.length ? [{ el: cell, names: imported }] : [];
       const { rows, cells, index } = rowsAround(region, cell);
       if (index < 0) return [];
-      return enclosingDefinitions(rows, index).map((d) => ({ el: cells[d.row]!, names: [d.name] }));
+      return enclosingDefinitions(rows, index, lang).map((d) => ({ el: cells[d.row]!, names: [d.name] }));
     };
 
     document.addEventListener(

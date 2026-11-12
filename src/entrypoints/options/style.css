@@ -53,4 +53,12 @@ footer { position: sticky; bottom: 0; background: var(--bg); padding: 12px 0; bo
 #moved-similarity { width: 70px; }
 
 .row.color { align-items: center; margin: 6px 0; }
+label.button {
+  display: inline-block; cursor: pointer; border: 1px solid var(--border); border-radius: 6px; padding: 4px 12px; margin-top: 6px;
+}
+.lang .name { font-weight: 600; }
+.lang .exts { font: 12px ui-monospace, SFMono-Regular, Menlo, monospace; }
+.badge { font-size: 12px; border: 1px solid var(--border); border-radius: 10px; padding: 0 8px; color: var(--muted); }
+#lang-status { white-space: pre-wrap; font-size: 12px; margin: 6px 0 0; }
+#lang-status:empty { display: none; }
 .row.color input[type="color"] { width: 36px; height: 26px; padding: 0 2px; border-radius: 6px; cursor: pointer; }

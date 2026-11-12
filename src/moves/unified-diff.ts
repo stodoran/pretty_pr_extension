@@ -20,6 +20,8 @@ export interface DiffFile {
   newPath: string | null; // null for deleted files
   status: 'added' | 'deleted' | 'modified' | 'renamed';
   binary: boolean;
+  /** File mode changed (e.g. made executable). */
+  modeChange?: boolean;
   /** Abbreviated blob ids from the `index` line, for verifying fetched contents. */
   oldBlob?: string;
   newBlob?: string;
@@ -121,6 +123,7 @@ export function parseUnifiedDiff(text: string): DiffFile[] {
       continue;
     }
     if (line.startsWith('new file mode')) file.status = 'added';
+    else if (line.startsWith('old mode ') || line.startsWith('new mode ')) file.modeChange = true;
     else if (line.startsWith('deleted file mode')) file.status = 'deleted';
     else if (line.startsWith('rename from ')) {
       file.status = 'renamed';

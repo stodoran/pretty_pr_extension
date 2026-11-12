@@ -13,6 +13,17 @@ export interface FeatureSettings {
     dimUnchanged: boolean;
   };
   definitionSearch: { enabled: boolean };
+  /** Formatted diffs for minified JSON files. */
+  readableJson: { enabled: boolean };
+  formatting: {
+    enabled: boolean;
+    /** Dim formatting-only lines. */
+    dimLines: boolean;
+    /** Mark files whose every change is formatting as viewed. */
+    autoViewFiles: boolean;
+    /** 0–100: how far formatting-only lines fade from red/green toward the page background. */
+    fade: number;
+  };
 }
 export type FeatureId = keyof FeatureSettings;
 
@@ -34,6 +45,8 @@ export const DEFAULT_SETTINGS: Settings = {
     autoViewTests: { enabled: true },
     movedCode: { enabled: true, minSimilarity: 0.65, dimUnchanged: true },
     definitionSearch: { enabled: true },
+    readableJson: { enabled: true },
+    formatting: { enabled: true, dimLines: true, autoViewFiles: true, fade: 75 },
   },
   colors: { ...DEFAULT_COLORS },
 };

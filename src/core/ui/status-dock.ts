@@ -12,21 +12,15 @@ export interface StatusLine {
   text: string;
   tone?: 'info' | 'error';
   actions?: StatusAction[];
-  /** Fade out after this many ms (paused while hovered). Default: 6s for info, never for errors. 0 = never. */
-  autoHideMs?: number;
 }
 
-const DEFAULT_AUTO_HIDE_MS = 6000;
-const FADE_MS = 400;
 
 const STYLE = `
   :host { all: initial; }
   .dock { position: fixed; right: 16px; bottom: 16px; z-index: 2147483000; display: flex;
     flex-direction: column; gap: 6px; font: 12px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
   .line { display: flex; align-items: center; gap: 8px; padding: 6px 8px 6px 10px; border-radius: 8px;
-    background: #1f2328; color: #f0f6fc; box-shadow: 0 4px 12px rgba(0,0,0,.25); max-width: 420px;
-    transition: opacity ${FADE_MS}ms ease; }
-  .line.fading { opacity: 0; }
+    background: #1f2328; color: #f0f6fc; box-shadow: 0 4px 12px rgba(0,0,0,.25); max-width: 420px; }
   .line.error { background: #82071e; }
   .text { flex: 1; }
   button { all: unset; cursor: pointer; padding: 2px 8px; border-radius: 6px; background: rgba(255,255,255,.12); }
@@ -39,8 +33,6 @@ export class StatusDock {
   private host: HTMLElement | null = null;
   private dock: HTMLElement | null = null;
   private lines = new Map<string, HTMLElement>();
-  private timers = new Map<string, ReturnType<typeof setTimeout>>();
-  private hideAfter = new Map<string, number>();
 
   private ensure(): HTMLElement {
     if (this.dock && this.host?.isConnected) return this.dock;
@@ -58,16 +50,9 @@ export class StatusDock {
     let el = this.lines.get(id);
     if (!el) {
       el = document.createElement('div');
-      // Hovering keeps the line visible (e.g. to reach Undo); leaving restarts the countdown.
-      el.addEventListener('mouseenter', () => {
-        this.cancelHide(id);
-        el!.classList.remove('fading');
-      });
-      el.addEventListener('mouseleave', () => this.scheduleHide(id));
       dock.append(el);
       this.lines.set(id, el);
     }
-    this.hideAfter.set(id, line.autoHideMs ?? (line.tone === 'error' ? 0 : DEFAULT_AUTO_HIDE_MS));
     el.className = `line ${line.tone ?? 'info'}`;
     el.replaceChildren();
     const text = document.createElement('span');
@@ -93,37 +78,14 @@ export class StatusDock {
     close.title = 'Dismiss';
     close.addEventListener('click', () => this.clear(id));
     el.append(close);
-    this.scheduleHide(id);
-  }
-
-  private cancelHide(id: string): void {
-    clearTimeout(this.timers.get(id));
-    this.timers.delete(id);
-  }
-
-  private scheduleHide(id: string): void {
-    this.cancelHide(id);
-    const ms = this.hideAfter.get(id) ?? 0;
-    if (!ms) return;
-    this.timers.set(
-      id,
-      setTimeout(() => {
-        this.lines.get(id)?.classList.add('fading');
-        this.timers.set(id, setTimeout(() => this.clear(id), FADE_MS));
-      }, ms),
-    );
   }
 
   clear(id: string): void {
-    this.cancelHide(id);
-    this.hideAfter.delete(id);
     this.lines.get(id)?.remove();
     this.lines.delete(id);
   }
 
   clearAll(): void {
-    for (const id of this.timers.keys()) this.cancelHide(id);
-    this.hideAfter.clear();
     this.host?.remove();
     this.host = this.dock = null;
     this.lines.clear();

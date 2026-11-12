@@ -20,7 +20,7 @@ td.diff-text-cell[data-prh-label] { position: relative; }
 td.diff-text-cell[data-prh-label-hover] { cursor: pointer; }
 td.diff-text-cell[data-prh-label]::after {
   content: attr(data-prh-label);
-  position: absolute; top: 1px; right: 36px; z-index: 2; /* clear of GitHub's line-hover menu */
+  position: absolute; top: 50%; transform: translateY(-50%); right: 36px; z-index: 2; /* clear of GitHub's line-hover menu */
   padding: 0 8px; border-radius: 10px;
   font: 600 11px/18px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   color: #fff; background: var(--prh-move-color);
@@ -36,8 +36,8 @@ export function isOverLabel(cell: HTMLElement, x: number, y: number): boolean {
   const rect = cell.getBoundingClientRect();
   const right = rect.right - parseFloat(after.right || '0');
   const width = parseFloat(after.width) + parseFloat(after.paddingLeft) + parseFloat(after.paddingRight);
-  const top = rect.top + parseFloat(after.top || '0');
   const height = parseFloat(after.lineHeight) || 18;
+  const top = rect.top + parseFloat(after.top || '0') - height / 2; // centered: translateY(-50%)
   return x >= right - width && x <= right && y >= top && y <= top + height;
 }
 
