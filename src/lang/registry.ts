@@ -8,10 +8,7 @@ import { parseLanguageFile } from './spec';
  * ones uploaded on the settings page, which replace a built-in one with the
  * same id. Stored in storage.local (language files are too big for sync).
  */
-export const BUILTIN_LANGUAGES: Record<string, string> = { python: pythonSource };
-
-/** Ready-made language files that aren't built in, offered for one-click install. */
-export const EXAMPLE_LANGUAGES: Record<string, string> = { typescript: typescriptSource };
+export const BUILTIN_LANGUAGES: Record<string, string> = { python: pythonSource, typescript: typescriptSource };
 
 export interface StoredLanguages {
   /** Uploaded language files (source text), by id. */

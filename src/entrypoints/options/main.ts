@@ -1,6 +1,6 @@
 import { COLOR_INFO, COLOR_KEYS, type ColorSettings } from '../../core/ui/colors';
 import { runExamples } from '../../lang/examples';
-import { BUILTIN_LANGUAGES, buildRegistry, EXAMPLE_LANGUAGES, loadLanguage, type StoredLanguages } from '../../lang/registry';
+import { BUILTIN_LANGUAGES, buildRegistry, loadLanguage, type StoredLanguages } from '../../lang/registry';
 import { loadStoredLanguages, saveStoredLanguages } from '../../lang/storage';
 import { SETTINGS_VERSION, loadSettings, saveSettings, type Settings } from '../../core/settings';
 import {
@@ -160,14 +160,13 @@ function renderLanguages() {
   const registry = buildRegistry({ custom: stored.custom, disabled: [] });
   const box = $('languages');
   box.replaceChildren();
-  const ids = [...new Set([...Object.keys(BUILTIN_LANGUAGES), ...stored.custom.map((c) => c.id), ...Object.keys(EXAMPLE_LANGUAGES)])];
+  const ids = [...new Set([...Object.keys(BUILTIN_LANGUAGES), ...stored.custom.map((c) => c.id)])];
   for (const id of ids) {
     const custom = stored.custom.find((c) => c.id === id);
     const builtin = BUILTIN_LANGUAGES[id];
-    const example = !custom && !builtin ? EXAMPLE_LANGUAGES[id] : undefined;
-    const source = custom?.source ?? builtin ?? example!;
-    const lang = registry.byId(id) ?? (example ? loadLanguage(example) : null);
-    const badge = custom ? (builtin ? 'uploaded, replaces built-in' : 'uploaded') : builtin ? 'built in' : 'available';
+    const source = custom?.source ?? builtin!;
+    const lang = registry.byId(id);
+    const badge = custom ? (builtin ? 'uploaded, replaces built-in' : 'uploaded') : 'built in';
     const row = el(
       'div',
       { className: 'card lang' },
@@ -180,18 +179,12 @@ function renderLanguages() {
       ),
     );
     const actions = el('div', { className: 'row' });
-    if (example) {
-      const add = el('button', { type: 'button', textContent: 'Install' });
-      add.addEventListener('click', () => void install(example));
-      actions.append(add);
-    } else {
-      const enabled = el('input', { type: 'checkbox', checked: !stored.disabled.includes(id) });
-      enabled.addEventListener('change', () => {
-        const disabled = enabled.checked ? stored.disabled.filter((d) => d !== id) : [...stored.disabled, id];
-        void saveLanguages({ ...stored, disabled }, `${lang?.name ?? id} ${enabled.checked ? 'on' : 'off'}. Reload open PR tabs.`);
-      });
-      actions.append(el('label', { className: 'check' }, enabled, document.createTextNode('On')));
-    }
+    const enabled = el('input', { type: 'checkbox', checked: !stored.disabled.includes(id) });
+    enabled.addEventListener('change', () => {
+      const disabled = enabled.checked ? stored.disabled.filter((d) => d !== id) : [...stored.disabled, id];
+      void saveLanguages({ ...stored, disabled }, `${lang?.name ?? id} ${enabled.checked ? 'on' : 'off'}. Reload open PR tabs.`);
+    });
+    actions.append(el('label', { className: 'check' }, enabled, document.createTextNode('On')));
     const dl = el('button', { type: 'button', textContent: 'Download' });
     dl.addEventListener('click', () => download(id, source));
     actions.append(dl);
@@ -248,6 +241,7 @@ async function init() {
   $<HTMLInputElement>('moved-similarity').value = String(settings.features.movedCode.minSimilarity);
   $<HTMLInputElement>('moved-dim').checked = settings.features.movedCode.dimUnchanged;
   $<HTMLInputElement>('feat-definitionSearch').checked = settings.features.definitionSearch.enabled;
+  $<HTMLInputElement>('feat-readableJson').checked = settings.features.readableJson.enabled;
   $<HTMLInputElement>('feat-formatting').checked = settings.features.formatting.enabled;
   $<HTMLInputElement>('fmt-dim').checked = settings.features.formatting.dimLines;
   $<HTMLInputElement>('fmt-autoview').checked = settings.features.formatting.autoViewFiles;
@@ -276,6 +270,7 @@ async function init() {
           dimUnchanged: $<HTMLInputElement>('moved-dim').checked,
         },
         definitionSearch: { enabled: $<HTMLInputElement>('feat-definitionSearch').checked },
+        readableJson: { enabled: $<HTMLInputElement>('feat-readableJson').checked },
         formatting: {
           enabled: $<HTMLInputElement>('feat-formatting').checked,
           dimLines: $<HTMLInputElement>('fmt-dim').checked,

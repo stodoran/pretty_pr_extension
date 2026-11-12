@@ -1,6 +1,6 @@
 # Demo PR fixtures
 
-Toy code (nothing real) for trying Pretty PR Review on a pull request where every case is known: one demo in Python ([PR #1](https://github.com/stodoran/pretty_pr_extension/pull/1)) and one in TypeScript (see [below](#typescript)).
+Toy code (nothing real) for trying Pretty PR Review on a pull request where every case is known: one demo in Python ([PR #1](https://github.com/stodoran/pretty_pr_extension/pull/1)) and one in TypeScript ([PR #2](https://github.com/stodoran/pretty_pr_extension/pull/2), see [below](#typescript)).
 
 ## Python
 
@@ -41,8 +41,6 @@ To change the demo, edit `toys/` or `after/`, run `npm test`, then rebuild the P
 
 ## TypeScript
 
-Needs the TypeScript language file: settings page → Languages → TypeScript / JavaScript → **Install**.
-
 - `typescript/toys/` is the base version, on `main`.
 - `typescript/after/` is what the demo PR changes it into. The PR branch (`demo/typescript-cases`) is `main` with `typescript/after/*` copied over `typescript/toys/`.
 - `src/formatting/demo-typescript.test.ts` checks every case below, using `languages/typescript.jsonc`.
@@ -73,3 +71,5 @@ Needs the TypeScript language file: settings page → Languages → TypeScript /
 | `sorting.ts` | `sortReport`: call arguments reordered and re-wrapped | real |
 | `matrix.ts` | only reformatted (semicolons, quotes, wrapping, trailing commas) | whole file auto-viewed, tagged "format" |
 | `fibonacci.test.ts` | new test | auto-viewed, tagged "auto" |
+| `settings.json` | indented JSON, a few values changed and an array item added | GitHub's own diff (it reads fine) |
+| `fields.json` | minified JSON (one line): a description reworded, a coordinate changed, a field group added | GitHub's diff replaced by the formatted one, each change headed by its location (`field_groups[1] “Account Holder” › fields[0] “Client Name” › description`) |

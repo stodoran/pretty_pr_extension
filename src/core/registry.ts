@@ -1,5 +1,6 @@
 import type { ContentScriptContext } from 'wxt/utils/content-script-context';
 import { createReactUiAdapter } from '../github/dom/react-ui';
+import { isDiffUnavailable } from '../github/fetch';
 import { parsePrUrl, prKey } from '../github/pr';
 import { pruneAutoViewMemory } from './auto-view-memory';
 import type { Feature } from './feature';
@@ -75,6 +76,8 @@ export function startRegistry(wxt: ContentScriptContext, features: Feature[]): v
       const status = dock.scope(feature.id);
       const reportError = (err: unknown) => {
         if (controller.signal.aborted && !isInvalidationError(err)) return;
+        // Not a failure: both diff-based features hit it, so say it once.
+        if (err instanceof Error && isDiffUnavailable(err.message)) return dock.set('core', { tone: 'info', text: `Pretty PR Review: ${err.message}` });
         failed = true;
         if (current === controller) setTabState('error');
         handleError(err, (msg) => status.set({ tone: 'error', text: `${feature.id}: ${msg}` }));

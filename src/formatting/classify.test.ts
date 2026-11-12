@@ -234,8 +234,8 @@ describe('formatting-only changes', () => {
     expect(classify('a.py', `f('one', 'two')\n`, `f('onetwo')\n`).whole).toBe(false);
   });
 
-  it('only Python files', () => {
-    for (const path of ['a.ts', 'a.go', 'a.yml']) expect(() => classify(path, `x = 1  \n`, `x = 1\n`)).toThrow('not classified');
+  it('only files of a known language', () => {
+    for (const path of ['a.rb', 'a.go', 'a.yml']) expect(() => classify(path, `x = 1  \n`, `x = 1\n`)).toThrow('not classified');
   });
 
   it('never for markdown', () => {

@@ -26,14 +26,15 @@
         <label class="check indent"><input type="checkbox" id="fmt-dim" /> Dim formatting- and comment-only lines</label>
         <label class="check indent"><input type="checkbox" id="fmt-autoview" /> Mark files with only formatting changes as viewed</label>
         <label class="check"><input type="checkbox" id="feat-definitionSearch" /> Search buttons on definitions and imports, searching the default branch</label>
+        <label class="check"><input type="checkbox" id="feat-readableJson" /> Readable diffs for minified JSON files (formatted, with where in the document each change is)</label>
       </section>
 
       <section>
         <h2>Languages</h2>
         <p class="hint">
           Each language is described by a language file (JSON with comments): its tokens, where functions and classes are,
-          and what counts as formatting. All features use it. Python is built in; download its file as a template
-          (every key is explained inside), edit it, and upload it. A file with the id of a built-in language replaces it.
+          and what counts as formatting. All features use it. Python and TypeScript/JavaScript are built in; download either as a
+          template (every key is explained in python.jsonc), edit it, and upload it. A file with the id of a built-in language replaces it.
           Changes apply right away; reload open PR tabs.
         </p>
         <div id="languages"></div>

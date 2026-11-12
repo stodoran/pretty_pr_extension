@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { definitionTerms, enclosingDefinitions, type DiffRow } from '../features/definition-search/terms';
@@ -9,7 +9,7 @@ import { extractDefinitions } from './definitions';
 import { diffOf, runExamples, singleRegistry } from './examples';
 import { highlight } from './highlight';
 import { normalizeDefinition } from './normalize';
-import { buildRegistry, builtinRegistry, loadLanguage } from './registry';
+import { BUILTIN_LANGUAGES, buildRegistry, builtinRegistry, loadLanguage } from './registry';
 import { parseJsonc, parseLanguageFile } from './spec';
 import { tokenize } from './tokenize';
 
@@ -19,8 +19,13 @@ const ts = loadLanguage(source('typescript.jsonc'));
 const tsRegistry = singleRegistry(ts);
 
 describe('language files', () => {
-  it.each(['python.jsonc', 'typescript.jsonc'])('%s loads and passes its examples', (name) => {
-    expect(runExamples(loadLanguage(source(name)))).toEqual([]);
+  const files = readdirSync(LANGUAGES).filter((f) => f.endsWith('.jsonc'));
+
+  it.each(files)('%s loads, passes its examples, and is built in', (name) => {
+    const lang = loadLanguage(source(name));
+    expect(runExamples(lang)).toEqual([]);
+    expect(`${lang.id}.jsonc`).toBe(name);
+    expect(BUILTIN_LANGUAGES[lang.id]).toBe(source(name));
   });
 
   it('JSONC: comments and trailing commas', () => {
@@ -40,7 +45,8 @@ describe('language files', () => {
     const custom = source('python.jsonc').replace('"name": "Python"', '"name": "My Python"');
     expect(buildRegistry({ custom: [{ id: 'python', source: custom }], disabled: [] }).forPath('a.py')!.name).toBe('My Python');
     expect(buildRegistry({ custom: [], disabled: ['python'] }).forPath('a.py')).toBeNull();
-    expect(builtinRegistry.forPath('a.ts')).toBeNull(); // TypeScript isn't built in
+    expect(builtinRegistry.forPath('a.tsx')!.id).toBe('typescript');
+    expect(buildRegistry({ custom: [], disabled: ['typescript'] }).forPath('a.ts')).toBeNull();
   });
 });
 

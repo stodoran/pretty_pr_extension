@@ -1,0 +1,16 @@
+{
+  "name": "toy-shapes",
+  "version": "1.2.0",
+  "precision": 4,
+  "units": "cm",
+  "features": {
+    "memoize": true,
+    "logging": false,
+    "maxCacheSize": 256
+  },
+  "shapes": [
+    "circle",
+    "square",
+    "rectangle"
+  ]
+}

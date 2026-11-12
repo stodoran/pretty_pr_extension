@@ -5,8 +5,19 @@
  * extension's host permissions allow.
  */
 
-async function get(url: string): Promise<Response> {
+/** GitHub won't generate diffs past a size limit (it answers 403 "error: too big or took too long to generate"). */
+export const DIFF_TOO_LARGE = "GitHub won't generate a diff this large, so moved code and formatting aren't checked on this PR.";
+
+/** Same, when generating it timed out (502/504). */
+export const DIFF_TIMED_OUT = 'GitHub timed out generating this PR\'s diff, so moved code and formatting aren\'t checked. Reload to try again.';
+
+/** Errors that mean "no PR diff", not "something broke": shown once, as information. */
+export const isDiffUnavailable = (message: string) => message === DIFF_TOO_LARGE || message === DIFF_TIMED_OUT;
+
+async function get(url: string, opts: { diff?: boolean } = {}): Promise<Response> {
   const res = await fetch(url, { credentials: 'include' });
+  if (res.status === 403 && /^error: too big/.test(await res.clone().text().catch(() => ''))) throw new Error(DIFF_TOO_LARGE);
+  if (opts.diff && (res.status === 502 || res.status === 504)) throw new Error(DIFF_TIMED_OUT);
   if (res.status === 404) throw new Error(`GitHub returned 404 for ${new URL(url).pathname} (signed out, or no access?)`);
   if (!res.ok) throw new Error(`GitHub returned ${res.status} for ${new URL(url).pathname}`);
   return res;
@@ -25,7 +36,7 @@ export function fetchPrDiff(owner: string, repo: string, number: number): Promis
   for (const [k, v] of diffs) if (now - v.at > DIFF_TTL_MS) diffs.delete(k);
   const hit = diffs.get(url);
   if (hit) return hit.text;
-  const text = get(url).then((r) => r.text());
+  const text = get(url, { diff: true }).then((r) => r.text());
   diffs.set(url, { at: now, text });
   text.catch(() => diffs.delete(url));
   return text;
