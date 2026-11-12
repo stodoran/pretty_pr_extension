@@ -21,6 +21,8 @@ export interface FeatureSettings {
     dimLines: boolean;
     /** Mark files whose every change is formatting as viewed. */
     autoViewFiles: boolean;
+    /** Also mark files whose every change is formatting or comments/docstrings as viewed. */
+    autoViewCommentFiles: boolean;
     /** 0–100: how far formatting-only lines fade from red/green toward the page background. */
     fade: number;
   };
@@ -46,7 +48,7 @@ export const DEFAULT_SETTINGS: Settings = {
     movedCode: { enabled: true, minSimilarity: 0.65, dimUnchanged: true },
     definitionSearch: { enabled: true },
     readableJson: { enabled: true },
-    formatting: { enabled: true, dimLines: true, autoViewFiles: true, fade: 75 },
+    formatting: { enabled: true, dimLines: true, autoViewFiles: true, autoViewCommentFiles: true, fade: 75 },
   },
   colors: { ...DEFAULT_COLORS },
 };

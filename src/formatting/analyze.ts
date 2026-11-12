@@ -16,7 +16,7 @@ const memoryCache = new Map<string, FormattingResult>();
 export async function analyzeFormatting(params: { owner: string; repo: string; number: number }): Promise<FormattingResult> {
   const { owner, repo, number } = params;
   const [diffText, registry] = await Promise.all([fetchPrDiff(owner, repo, number), loadRegistry()]);
-  const cacheKey = `format:v12:${owner}/${repo}#${number}:${registry.hash}:${await sha1Hex(diffText)}`;
+  const cacheKey = `format:v13:${owner}/${repo}#${number}:${registry.hash}:${await sha1Hex(diffText)}`;
   const cached = memoryCache.get(cacheKey) ?? ((await browser.storage.session.get(cacheKey))[cacheKey] as FormattingResult | undefined);
   if (cached) return cached;
 

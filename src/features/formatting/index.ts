@@ -11,7 +11,8 @@ import type { FileFormatting } from '../../formatting/classify';
  * Formatting-only changes (whitespace, wrapping, quotes, trailing commas,
  * reordered imports) and comment-only changes are dimmed. Hovering one highlights its
  * whole block and labels what kind of formatting it is. Files whose every
- * change is formatting can be marked as viewed, tagged "format".
+ * change is formatting can be marked as viewed, tagged "format"; files whose
+ * changes are formatting and comments, tagged "comments".
  *
  * Analysis runs in the background worker on the full PR diff; the page only
  * gets data-attributes, styled by an injected stylesheet.
@@ -53,7 +54,7 @@ export const formatting: Feature = {
   async run({ page, settings, dom, status, signal, reportError }) {
     const opts = settings.features.formatting;
     const { files } = await call('analyzeFormatting', { owner: page.owner, repo: page.repo, number: page.number });
-    if (signal.aborted || !files.some((f) => f.whole || f.left.length || f.right.length)) return;
+    if (signal.aborted || !files.some((f) => f.whole || f.wholeWithComments || f.left.length || f.right.length)) return;
 
     const byRegion = new Map<string, FileFormatting>();
     for (const f of files) byRegion.set(await diffAnchorId(f.path), f);
@@ -128,36 +129,58 @@ export const formatting: Feature = {
     const summary = lines
       ? `${lines} formatting/comment-only line${plural(lines)} in ${shown} file${plural(shown)}` +
         (whole.length ? ` (${whole.length} entirely)` : '')
-      : `${whole.length} file${plural(whole.length)} with only blank-line changes`;
+      : whole.length
+        ? `${whole.length} file${plural(whole.length)} with only blank-line changes`
+        : 'Only single-line comment changes';
 
-    let viewer: AutoViewer | null = null;
+    const viewers: AutoViewer[] = [];
     const show = () => {
-      const s = viewer?.summary();
-      status.set({ text: `🧹 ${[summary, ...(s?.parts ?? [])].join(' · ')}`, actions: s?.actions ?? [] });
+      const parts = viewers.map((v) => v.summary());
+      status.set({ text: `🧹 ${[summary, ...parts.flatMap((p) => p.parts)].join(' · ')}`, actions: parts.flatMap((p) => p.actions) });
     };
-    if (opts.autoViewFiles && whole.length) {
-      // Test/docs files are the other auto-viewer's job (and keep its "auto" tag).
-      const isTest = settings.features.autoViewTests.enabled
-        ? createTestFileMatcher(settings.testPatterns, page.owner, page.repo)
-        : () => ({ isTest: false });
-      const candidates = new Set(whole.map((f) => f.path).filter((p) => !neverAutoView(p) && !isTest(p).isTest));
-      if (candidates.size) {
-        viewer = await startAutoViewer({
-          dom,
-          signal,
-          reportError,
-          prKey: prKey(page),
-          memory: { userUnviewed: 'formatUserUnviewed', autoViewed: 'formatAutoViewed' },
-          attr: 'data-prh-format-viewed',
-          tag: 'format',
-          color: COLORS.formatting,
-          title: 'Only formatting changes; marked as viewed by Pretty PR Review',
-          noun: 'formatting-only file',
-          isCandidate: (path) => candidates.has(path),
-          onChange: show,
-        });
-        if (signal.aborted) return;
-      }
+    // Test/docs files are the other auto-viewer's job (and keep its "auto" tag).
+    const isTest = settings.features.autoViewTests.enabled
+      ? createTestFileMatcher(settings.testPatterns, page.owner, page.repo)
+      : () => ({ isTest: false });
+    const candidatesOf = (fs: FileFormatting[]) => new Set(fs.map((f) => f.path).filter((p) => !neverAutoView(p) && !isTest(p).isTest));
+    const kinds = [
+      opts.autoViewFiles && {
+        files: whole,
+        memory: { userUnviewed: 'formatUserUnviewed', autoViewed: 'formatAutoViewed' } as const,
+        attr: 'data-prh-format-viewed',
+        tag: 'format',
+        title: 'Only formatting changes; marked as viewed by Pretty PR Review',
+        noun: 'formatting-only file',
+      },
+      opts.autoViewCommentFiles && {
+        files: files.filter((f) => f.wholeWithComments),
+        memory: { userUnviewed: 'commentsUserUnviewed', autoViewed: 'commentsAutoViewed' } as const,
+        attr: 'data-prh-comments-viewed',
+        tag: 'comments',
+        title: 'Only formatting and comment/docstring changes; marked as viewed by Pretty PR Review',
+        noun: 'comment-only file',
+      },
+    ];
+    for (const k of kinds) {
+      if (!k) continue;
+      const candidates = candidatesOf(k.files);
+      if (!candidates.size) continue;
+      const viewer = await startAutoViewer({
+        dom,
+        signal,
+        reportError,
+        prKey: prKey(page),
+        memory: k.memory,
+        attr: k.attr,
+        tag: k.tag,
+        color: COLORS.formatting,
+        title: k.title,
+        noun: k.noun,
+        isCandidate: (path) => candidates.has(path),
+        onChange: show,
+      });
+      if (signal.aborted) return;
+      if (viewer) viewers.push(viewer);
     }
     show();
   },

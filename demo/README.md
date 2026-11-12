@@ -37,7 +37,7 @@ To change the demo, edit `toys/` or `after/`, run `npm test`, then rebuild the P
 | `sorting.py` | `print("done")` dedented out of the `if` (nothing else in that hunk) | real |
 | `sorting.py` | `sort_report`: call restructured, arguments re-wrapped | real |
 | `matrix.py` | only reformatted (quotes, wrapping, trailing commas) | whole file auto-viewed, tagged "format" |
-| `epochs.py` | its only change: a one-line docstring rewritten over two lines | dimmed, "comment changes" (not auto-viewed: comments aren't formatting) |
+| `epochs.py` | its only change: a one-line docstring rewritten over two lines | dimmed, "comment changes"; whole file auto-viewed, tagged "comments" |
 | `test_fibonacci.py` | new test | auto-viewed, tagged "auto" |
 
 ## TypeScript

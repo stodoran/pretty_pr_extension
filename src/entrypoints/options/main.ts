@@ -245,6 +245,7 @@ async function init() {
   $<HTMLInputElement>('feat-formatting').checked = settings.features.formatting.enabled;
   $<HTMLInputElement>('fmt-dim').checked = settings.features.formatting.dimLines;
   $<HTMLInputElement>('fmt-autoview').checked = settings.features.formatting.autoViewFiles;
+  $<HTMLInputElement>('fmt-autoview-comments').checked = settings.features.formatting.autoViewCommentFiles;
   $<HTMLTextAreaElement>('defaults').value = settings.testPatterns.defaults.join('\n');
   settings.testPatterns.overrides.forEach(overrideRow);
   colorRows(settings.colors);
@@ -275,6 +276,7 @@ async function init() {
           enabled: $<HTMLInputElement>('feat-formatting').checked,
           dimLines: $<HTMLInputElement>('fmt-dim').checked,
           autoViewFiles: $<HTMLInputElement>('fmt-autoview').checked,
+          autoViewCommentFiles: $<HTMLInputElement>('fmt-autoview-comments').checked,
           fade: Number($<HTMLInputElement>('fmt-fade').value),
         },
       },

@@ -125,8 +125,10 @@ describe('demo PR', () => {
   it('a file that is only reformatted is entirely formatting', () => {
     expect(result('matrix.py').r.whole).toBe(true);
     for (const p of ['fibonacci.py', 'primes.py', 'shapes.py', 'sorting.py', 'epochs.py']) expect(result(p).r.whole).toBe(false);
-    // Only comment changes: no formatting lines, but still shown.
+    // Only comment changes: no formatting lines, but still shown, and auto-viewed as "comments".
     expect(result('epochs.py').r.formatting).toBe(0);
+    expect(result('epochs.py').r.wholeWithComments).toBe(true);
+    for (const p of ['fibonacci.py', 'primes.py', 'shapes.py', 'sorting.py', 'matrix.py']) expect(result(p).r.wholeWithComments).toBe(false);
     expect(hasMarks(result('epochs.py').r)).toBe(true);
   });
 });

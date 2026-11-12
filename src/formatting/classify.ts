@@ -40,12 +40,16 @@ export interface FileFormatting {
   /** Changed (added + removed) lines, and how many of them are formatting (comment changes don't count). */
   changed: number;
   formatting: number;
+  /** Changed lines that are comment changes. */
+  comments: number;
   /** Every change in the file is formatting. */
   whole: boolean;
+  /** Not `whole`, but every change is formatting or comments/docstrings. */
+  wholeWithComments: boolean;
 }
 
 /** Whether the file has anything to mark: formatting or comment-only lines, or it's entirely formatting. */
-export const hasMarks = (f: FileFormatting) => f.whole || f.left.length + f.right.length > 0;
+export const hasMarks = (f: FileFormatting) => f.whole || f.wholeWithComments || f.left.length + f.right.length > 0;
 
 /** Above this many token pairs (after trimming the common prefix) a hunk isn't aligned. */
 const MAX_LCS_CELLS = 4_000_000;
@@ -58,12 +62,14 @@ export function classifyFile(file: DiffFile, registry: Registry = builtinRegistr
   const lang = registry.forPath(path);
   if (!lang?.formatting.enabled) return null;
 
-  const out: FileFormatting = { path, left: [], right: [], blocks: [], changed: 0, formatting: 0, whole: false };
+  const out: FileFormatting = { path, left: [], right: [], blocks: [], changed: 0, formatting: 0, comments: 0, whole: false, wholeWithComments: false };
   let unsure = false;
   for (const h of file.hunks) if (classifyHunk(h, out, lang)) unsure = true;
   // `whole` auto-views the file, so only when nothing else could hide in it:
   // no rename or mode change, and no hunk that needed the docstring guess.
-  out.whole = file.status === 'modified' && !file.modeChange && !unsure && out.changed > 0 && out.formatting === out.changed;
+  const safe = file.status === 'modified' && !file.modeChange && !unsure && out.changed > 0;
+  out.whole = safe && out.formatting === out.changed;
+  out.wholeWithComments = safe && !out.whole && out.formatting + out.comments === out.changed;
   return out;
 }
 
@@ -215,7 +221,8 @@ function classifyHunk(h: Hunk, out: FileFormatting, lang: Language): boolean {
     const idx = index[l.kind].get(no)!;
     const kind = kindOf(s, idx);
     out.changed++;
-    if (kind && kind !== 'comment') out.formatting++;
+    if (kind === 'comment') out.comments++;
+    else if (kind) out.formatting++;
     // Blank lines count as formatting (for `whole`) but aren't marked: they're invisible anyway.
     if (!l.text.trim()) continue;
     if (!kind) {
