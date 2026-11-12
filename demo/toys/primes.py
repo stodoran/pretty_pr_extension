@@ -1,16 +1,14 @@
 """Toy prime-number helpers (demo fixture)."""
-from fibonacci import fib_sequence
-
-
-def gcd(a, b):
-    while b:
-        a, b = b, a % b
-    return a
+from fibonacci import (
+    fib_iterative,
+    fib_sequence,
+)
 
 
 def is_prime(n):
     if n < 2:
         return False
+    # trial division
     for d in range(2, int(n ** 0.5) + 1):
         if n % d == 0:
             return False
@@ -20,6 +18,8 @@ def is_prime(n):
 def primes_below(limit):
     sieve = [True] * limit
     sieve[0:2] = [False, False]
+    # Classic sieve of Eratosthenes: every multiple of a prime
+    # is crossed out, starting from the prime's square.
     for i in range(2, int(limit ** 0.5) + 1):
         if sieve[i]:
             for j in range(i * i, limit, i):
@@ -33,17 +33,22 @@ def prime_fibs(limit):
 
 def check(n):
     result = is_prime(n)
-    if result:
-        try:
-            factors = [d for d in range(2, n) if n % d == 0]
-            assert not factors
-            print("checked", n)
-        except AssertionError as exc:
-            print("inconsistent", exc)
+    if result and n > 2:
+        factors = [d for d in range(2, n) if n % d == 0]
+        assert not factors
+        print("checked", n)
     return result
 
 
 def report(numbers, label):
     count = len([n for n in numbers if is_prime(n)])
-    message = "Found %d primes in %s; " "the largest checked was %d" % (count, label, max(numbers))
+    message = "Found %d primes in %s; the largest checked was %d" % (
+        count,
+        label,
+        max(numbers),
+    )
     return message
+
+
+def nth_prime_fib(n):
+    return prime_fibs(fib_iterative(n * 4))[n]
