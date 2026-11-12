@@ -3,6 +3,7 @@ import { dedent, diffLines, type DiffOp } from '../../moves/line-diff';
 import { COLORS } from '../../core/ui/colors';
 import { highlight, type HlSpan } from '../../lang/highlight';
 import type { Registry } from '../../lang/registry';
+import { diffViewMode } from '../../github/view';
 
 /**
  * Side panel listing moved functions, plus a modal comparing a function's old
@@ -162,7 +163,7 @@ export class MovesPanel {
       new: lang ? highlight(dedent(m.to.text).split('\n'), lang) : plain(dedent(m.to.text)),
     };
     body.append(
-      isSplitDiffView() ? renderSplit(ops, m.from.startLine, m.to.startLine, hl) : renderUnified(ops, m.from.startLine, m.to.startLine, hl),
+      diffViewMode() === 'split' ? renderSplit(ops, m.from.startLine, m.to.startLine, hl) : renderUnified(ops, m.from.startLine, m.to.startLine, hl),
     );
     modal.append(header, body);
     backdrop.append(modal);
@@ -182,15 +183,6 @@ export class MovesPanel {
     document.addEventListener('keydown', onKey, true);
     this.root.append(backdrop);
   }
-}
-
-/** Match the page: GitHub's split view renders old and new code cells in the same row. */
-function isSplitDiffView(): boolean {
-  for (const row of document.querySelectorAll('table[role="grid"] tr.diff-line-row')) {
-    const cells = row.querySelectorAll('td.diff-text-cell').length;
-    if (cells) return cells > 1;
-  }
-  return true; // nothing rendered to tell from: split is the more common choice for side-by-side moves
 }
 
 const kindClass = (k: DiffOp['kind']) => (k === '+' ? 'add' : k === '-' ? 'del' : 'ctx');

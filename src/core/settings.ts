@@ -13,6 +13,8 @@ export interface FeatureSettings {
     dimUnchanged: boolean;
   };
   definitionSearch: { enabled: boolean };
+  /** Formatted diffs for minified JSON files. */
+  readableJson: { enabled: boolean };
   formatting: {
     enabled: boolean;
     /** Dim formatting-only lines. */
@@ -43,6 +45,7 @@ export const DEFAULT_SETTINGS: Settings = {
     autoViewTests: { enabled: true },
     movedCode: { enabled: true, minSimilarity: 0.65, dimUnchanged: true },
     definitionSearch: { enabled: true },
+    readableJson: { enabled: true },
     formatting: { enabled: true, dimLines: true, autoViewFiles: true, fade: 75 },
   },
   colors: { ...DEFAULT_COLORS },

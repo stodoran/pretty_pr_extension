@@ -32,6 +32,12 @@ Hover any line of a function or class to get a search button on its definition l
 
 ![Search button on a function's def line](docs/screenshots/definition-search.png)
 
+### Readable JSON diffs
+
+Minified JSON changes as one huge line, which GitHub doesn't even render by default. For each modified `.json` file minified onto one line, the extension formats both versions (arrays and objects that fit stay on one line, every value keeps its exact text) and shows their diff in place of GitHub's, split or unified to match your diff view setting. A button in the file switches to GitHub's diff and back. JSON files with several lines are left to GitHub. Each hunk is headed by where it is in the document (`field_groups[12] › fields[2] “Client Name” › description`, using a `name`/`title`/`id` field when there is one), and the changed words are marked. Files that are the same JSON once formatted say so.
+
+It doesn't need GitHub's PR diff, so it also works on PRs too large for one. Files load as they scroll into view, a few at a time.
+
 ### Languages
 
 Each language is described by a **language file**: JSON with comments describing the language's strings and comments, how blocks work, what definitions and imports look like, which names are local, and what counts as formatting. Every feature reads the same file. [Python](languages/python.jsonc) and [TypeScript/JavaScript](languages/typescript.jsonc) are built in.
@@ -83,6 +89,7 @@ When in doubt, make a rule stricter: a change wrongly shown as formatting can hi
 | --- | --- |
 | `src/core/registry.ts` | Detects PR pages (including SPA navigation) and runs enabled features |
 | `languages/*.jsonc` | Built-in language files (Python, TypeScript/JavaScript) |
+| `src/json/` | Readable JSON diffs: token-preserving formatter with paths, Myers line diff, hunks |
 | `src/lang/` | The language engine: file format and validation, tokenizer, definitions, normalization for moved code, highlighting |
 | `src/core/feature.ts` | `Feature` interface: add new augmentations as modules in `src/features/` |
 | `src/core/test-files.ts` | Pure glob classifier (defaults → `owner/*` → `owner/repo`, last match wins, `!` negates) |

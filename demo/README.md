@@ -71,3 +71,5 @@ To change the demo, edit `toys/` or `after/`, run `npm test`, then rebuild the P
 | `sorting.ts` | `sortReport`: call arguments reordered and re-wrapped | real |
 | `matrix.ts` | only reformatted (semicolons, quotes, wrapping, trailing commas) | whole file auto-viewed, tagged "format" |
 | `fibonacci.test.ts` | new test | auto-viewed, tagged "auto" |
+| `settings.json` | indented JSON, a few values changed and an array item added | GitHub's own diff (it reads fine) |
+| `fields.json` | minified JSON (one line): a description reworded, a coordinate changed, a field group added | GitHub's diff replaced by the formatted one, each change headed by its location (`field_groups[1] “Account Holder” › fields[0] “Client Name” › description`) |

@@ -241,6 +241,7 @@ async function init() {
   $<HTMLInputElement>('moved-similarity').value = String(settings.features.movedCode.minSimilarity);
   $<HTMLInputElement>('moved-dim').checked = settings.features.movedCode.dimUnchanged;
   $<HTMLInputElement>('feat-definitionSearch').checked = settings.features.definitionSearch.enabled;
+  $<HTMLInputElement>('feat-readableJson').checked = settings.features.readableJson.enabled;
   $<HTMLInputElement>('feat-formatting').checked = settings.features.formatting.enabled;
   $<HTMLInputElement>('fmt-dim').checked = settings.features.formatting.dimLines;
   $<HTMLInputElement>('fmt-autoview').checked = settings.features.formatting.autoViewFiles;
@@ -269,6 +270,7 @@ async function init() {
           dimUnchanged: $<HTMLInputElement>('moved-dim').checked,
         },
         definitionSearch: { enabled: $<HTMLInputElement>('feat-definitionSearch').checked },
+        readableJson: { enabled: $<HTMLInputElement>('feat-readableJson').checked },
         formatting: {
           enabled: $<HTMLInputElement>('feat-formatting').checked,
           dimLines: $<HTMLInputElement>('fmt-dim').checked,
