@@ -107,6 +107,17 @@ describe('formatting-only changes', () => {
     expect(r.right).toEqual([3, 5, 6, 8]);
   });
 
+  it('comments tools act on are real changes, so the file is not auto-viewed', () => {
+    const r = classify('a.py', `import os\nx = f()\ny = 1\n`, `import os  # noqa: F401\nx = f()  # type: ignore\ny = 1\n`);
+    expect(r.left).toEqual([]);
+    expect(r.right).toEqual([]);
+    expect(r.wholeWithComments).toBe(false);
+    const ts = classify('a.ts', `const x = f();\nconst y = 1;\n`, `// @ts-expect-error\nconst x = f();\n// eslint-disable-next-line\nconst y = 1;\n`);
+    expect(ts.wholeWithComments).toBe(false);
+    // An ordinary comment edit still counts.
+    expect(classify('a.py', `x = 1  # old\n`, `x = 1  # new\n`).wholeWithComments).toBe(true);
+  });
+
   it('new and deleted files have nothing to mark', () => {
     const diff = (status: string, sign: string) =>
       `diff --git a/a.py b/a.py\n${status} file mode 100644\nindex 0000000..1111111\n--- ${sign === '+' ? '/dev/null' : 'a/a.py'}\n+++ ${sign === '+' ? 'b/a.py' : '/dev/null'}\n@@ ${sign === '+' ? '-0,0 +1,6' : '-1,6 +0,0'} @@\n` +

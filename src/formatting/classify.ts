@@ -51,6 +51,10 @@ export interface FileFormatting {
 /** Whether the file has anything to mark: formatting or comment-only lines, or it's entirely formatting. */
 export const hasMarks = (f: FileFormatting) => f.whole || f.wholeWithComments || f.left.length + f.right.length > 0;
 
+/** Comments that tools act on: shebangs, encoding declarations, type-checker, linter and coverage directives. */
+const DIRECTIVE =
+  /^#!|coding[:=]|\btype:\s*\S|\bnoqa\b|\bnosec\b|\bnosemgrep\b|\bpragma\b|\bpylint:|\bmypy:|\bpyright:|\bruff:|\bfmt:\s*(?:off|on|skip)|\bisort:|eslint-|@ts-|prettier-ignore|biome-ignore|\/\/\/\s*<|istanbul\s+ignore|c8\s+ignore|webpack[A-Z]|\bNOLINT|@vite-ignore|@jsx|@flow\b/;
+
 /** Above this many token pairs (after trimming the common prefix) a hunk isn't aligned. */
 const MAX_LCS_CELLS = 4_000_000;
 
@@ -189,6 +193,11 @@ function classifyHunk(h: Hunk, out: FileFormatting, lang: Language): boolean {
     if (s.imports.has(idx)) return 'imports';
     if (s.reindent.has(idx)) return reindentOk ? 'format' : null;
     if (s.real.has(idx)) return null;
+    // Comments that tools read (type checkers, linters, encodings) change behavior: adding or
+    // removing one is real, on both its line and the line it matched on the other side.
+    const other = s === old ? neu : old;
+    const directive = (x: Side, i: number) => x.comment.has(i) && DIRECTIVE.test(x.lines[i]!.text);
+    if (directive(s, idx) || (s.partners.get(idx) ?? []).some((p) => directive(other, p))) return null;
     return s.comment.has(idx) ? 'comment' : 'format';
   };
   const index = { '-': new Map<number, number>(), '+': new Map<number, number>() };

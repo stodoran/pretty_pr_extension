@@ -17,8 +17,8 @@ import type { FileFormatting } from '../../formatting/classify';
  * Analysis runs in the background worker on the full PR diff; the page only
  * gets data-attributes, styled by an injected stylesheet.
  */
-/** Comment changes inside a moved function: the move is what matters there, so they aren't marked. */
-const ON = ':not([data-prh-move][data-prh-format-kind="comment"])';
+/** Nothing is marked inside moved code: the move is what matters there (and its old copy is matched against unrelated lines). */
+const ON = ':not([data-prh-move])';
 
 const CSS = `
 td[data-prh-format-block] {
