@@ -13,17 +13,27 @@ def transpose(m: Matrix) -> Matrix:
 
 
 def multiply(a: Matrix, b: Matrix) -> Matrix:
-    assert len(a[0]) == len(b), 'inner dimensions must match: %d vs %d' % (len(a[0]), len(b))
-    return [[sum(x * y for x, y in zip(row, col)) for col in transpose(b)] for row in a]
+    assert len(a[0]) == len(b), "inner dimensions must match: %d vs %d" % (
+        len(a[0]),
+        len(b),
+    )
+    return [
+        [sum(x * y for x, y in zip(row, col)) for col in transpose(b)]
+        for row in a
+    ]
 
 
-def scale(m: Matrix, factor: float, round_to: int = 6, keep_integers: bool = False) -> Matrix:
+def scale(
+    m: Matrix, factor: float, round_to: int = 6, keep_integers: bool = False
+) -> Matrix:
     result = [[round(x * factor, round_to) for x in row] for row in m]
     if keep_integers:
-        result = [[int(x) if float(x).is_integer() else x for x in row] for row in result]
+        result = [
+            [int(x) if float(x).is_integer() else x for x in row] for row in result
+        ]
     return result
 
 
 def describe(m: Matrix) -> dict:
     rows, cols = len(m), len(m[0]) if m else 0
-    return {'rows': rows, 'cols': cols, 'square': rows == cols}
+    return {"rows": rows, "cols": cols, "square": rows == cols}
