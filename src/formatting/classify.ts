@@ -387,8 +387,18 @@ function markLines(s: Side, mine: Int32Array, other: Side, theirs: Int32Array) {
     if (isIndent(t)) return;
     for (let l = t.line; l <= t.endLine; l++) byLine.set(l, [...(byLine.get(l) ?? []), k]);
   });
+  // The comma ending a list element, unmatched because the next element is new
+  // (or was removed): it belongs to that element, not this line.
+  const elements = elementLines(s);
+  const separator = (k: number) => {
+    const t = s.toks[k]!;
+    if (t.key !== ',' || !elements.has(t.line)) return false;
+    let n = k + 1;
+    while (n < s.toks.length && (isLayoutTok(s.toks[n]!) || isCommentTok(s.toks[n]!))) n++;
+    return n < s.toks.length && s.toks[n]!.line > t.line && mine[n]! < 0;
+  };
   for (const [line, ks] of byLine) {
-    if (ks.some((k) => mine[k]! < 0 && !isLayoutTok(s.toks[k]!) && !isCommentTok(s.toks[k]!))) {
+    if (ks.some((k) => mine[k]! < 0 && !isLayoutTok(s.toks[k]!) && !isCommentTok(s.toks[k]!) && !separator(k))) {
       s.real.add(line);
       continue;
     }
@@ -477,7 +487,8 @@ function wholeStatements(old: Side, a: Int32Array, neu: Side, lang: Language) {
   const real = [new Set<number>(), new Set<number>()] as const;
   sides.forEach((s, i) => {
     const g = gs[i]!;
-    for (const l of s.real) if (!s.reindent.has(l) && g[l]! >= 0 && !imports[i]!.has(g[l]!)) real[i]!.add(g[l]!);
+    const own = elementLines(s);
+    for (const l of s.real) if (!s.reindent.has(l) && !own.has(l) && g[l]! >= 0 && !imports[i]!.has(g[l]!)) real[i]!.add(g[l]!);
   });
   for (let changed = true; changed; ) {
     changed = false;
@@ -500,6 +511,35 @@ function wholeStatements(old: Side, a: Int32Array, neu: Side, lang: Language) {
       s.comment.delete(l);
     });
   });
+}
+
+/**
+ * Lines holding only whole elements of a bracketed list opened on an earlier
+ * line (`    keep_first=x,` inside a wrapped call or signature): each argument
+ * stands on its own, so a new or edited one doesn't make its rewrapped
+ * siblings real. Like imports, only the changed element is shown.
+ */
+function elementLines(s: Side): Set<number> {
+  const out = new Set<number>();
+  const code = s.toks.filter((t) => !isLayoutTok(t) && !isCommentTok(t));
+  const opener = (k?: string) => k === '(' || k === '[' || k === '{';
+  const closer = (k?: string) => k === ')' || k === ']' || k === '}';
+  // depth[k]: bracket depth before code[k] (depth[code.length]: at the end).
+  const depth = [0];
+  for (const t of code) depth.push(Math.max(0, depth.at(-1)! + (opener(t.key) ? 1 : closer(t.key) ? -1 : 0)));
+  for (let f = 0; f < code.length; ) {
+    let e = f;
+    while (e + 1 < code.length && code[e + 1]!.line === code[f]!.line) e++;
+    const d = depth[f]!;
+    const prev = code[f - 1]?.key;
+    // Inside a list opened above, starting a new element, never closing that list, ending where it started...
+    let ok = d > 0 && (opener(prev) || prev === ',') && depth[e + 1] === d;
+    for (let k = f + 1; ok && k <= e; k++) if (depth[k]! < d) ok = false;
+    // ...and ending its element: a comma, or the list's closing bracket next.
+    if (ok && (code[e]!.key === ',' || closer(code[e + 1]?.key))) out.add(code[f]!.line);
+    f = e + 1;
+  }
+  return out;
 }
 
 /** LCS alignment of two key sequences; returns each position's partner index on the other side, or -1. */

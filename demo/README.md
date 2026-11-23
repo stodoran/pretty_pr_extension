@@ -29,6 +29,7 @@ To change the demo, edit `toys/` or `after/`, run `npm test`, then rebuild the P
 | `primes.py` | new function `nth_prime_fib` | real |
 | `shapes.py` | class docstring rewrapped | dimmed |
 | `shapes.py` | `bounding_box` return wrapped; `largest` signature exploded with a trailing comma | dimmed |
+| `shapes.py` | `report`: call rewrapped one argument per line, with one new argument | dimmed; only `include_zero_area=True,` real |
 | `shapes.py` | `(name,)` → `(name)`, `"a  "` → `"a "` | real |
 | `shapes.py` | `Rectangle` moved to the end, `perimeter` changed | moved, modified |
 | `sorting.py` | `bubble_sort` renamed `sort_bubble` and moved to the end | moved (renamed) |

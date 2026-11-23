@@ -56,3 +56,10 @@ def summary(shape):
     kind = (name,)
     label = "a  " + name.lower()
     return {"kind": kind, "label": label, "area": round(shape.area(), 2)}
+
+
+def report(shapes, default=None):
+    best = largest(
+        shapes, key_function=None, default_value=default
+    )
+    return summary(best) if best else None

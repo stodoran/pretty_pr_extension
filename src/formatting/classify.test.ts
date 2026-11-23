@@ -64,6 +64,26 @@ describe('formatting-only changes', () => {
     expect(r.formatting).toBe(0);
   });
 
+  it('a new argument in a rewrapped call: only the new argument is real (reported case)', () => {
+    const r = classify(
+      'a.py',
+      `def f():\n    return create(\n        root, manifest, ids, is_eval=is_eval, limit=limit\n    )\n`,
+      `def f():\n    return create(\n        root,\n        manifest,\n        ids,\n        is_eval=is_eval,\n        limit=limit,\n        keep_first=split.validate,\n    )\n`,
+    );
+    expect(r.left).toEqual([3]);
+    expect(r.right).toEqual([3, 4, 5, 6, 7]);
+  });
+
+  it('a new parameter in a rewrapped signature: only the new parameter is real (reported case)', () => {
+    const r = classify(
+      'a.py',
+      `def _scan(\n    root: Path, ids: frozenset[str], limit: int | None = None\n) -> P | None:\n    return 1\n`,
+      `def _scan(\n    root: Path,\n    ids: frozenset[str],\n    limit: int | None = None,\n    keep_first: frozenset[str] = frozenset(),\n) -> P | None:\n    return 1\n`,
+    );
+    expect(r.left).toEqual([2]);
+    expect(r.right).toEqual([2, 3, 4]);
+  });
+
   it('code that moved past unchanged lines is not formatting', () => {
     const fn = `def helper(x):\n    y = x + 1\n    return y * 2\n`;
     const r = classify('a.py', `${fn}\n\nA = 1\nB = 2\nC = 3\n`, `A = 1\nB = 2\nC = 3\n\n\n${fn}`);

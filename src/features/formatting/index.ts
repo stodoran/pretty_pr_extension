@@ -23,13 +23,11 @@ const ON = ':not([data-prh-move])';
 const CSS = `
 td[data-prh-format-block] {
   --prh-format-color: ${COLORS.formatting};
-  /* The page background laid over GitHub's red/green, so the line reads almost like an unchanged one. */
+  /* The page background laid over GitHub's red/green, so the line reads almost like an unchanged one. Only the background fades; the text keeps its normal look. */
   --prh-format-fade: linear-gradient(color-mix(in srgb, var(--bgColor-default, #fff) var(${FORMAT_FADE_VAR}, 75%), transparent), color-mix(in srgb, var(--bgColor-default, #fff) var(${FORMAT_FADE_VAR}, 75%), transparent));
   --prh-format-tint: linear-gradient(color-mix(in srgb, var(--prh-format-color) 10%, transparent), color-mix(in srgb, var(--prh-format-color) 10%, transparent));
 }
 td[data-prh-format-dim]${ON} { background-image: var(--prh-format-fade); }
-td.diff-text-cell[data-prh-format-dim]${ON} .diff-text-inner { opacity: 0.6; }
-td.diff-text-cell[data-prh-format-hover]${ON} .diff-text-inner { opacity: 0.9; }
 td.new-diff-line-number[data-prh-format-hover]${ON}, td.diff-text-cell[data-prh-format-hover]${ON} {
   background-image: var(--prh-format-tint);
 }

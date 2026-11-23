@@ -75,6 +75,12 @@ const CASES: Record<string, Case[]> = {
     ['shapes.py', '+', 'def largest(', 'dim'],
     ['shapes.py', '+', 'include_zero_area=False,', 'dim'],
   ],
+  'new argument in a rewrapped call: only it is real': [
+    ['shapes.py', '-', 'shapes, key_function=None, default_value=default', 'dim'],
+    ['shapes.py', '+', 'key_function=None,', 'dim'],
+    ['shapes.py', '+', 'default_value=default,', 'dim'],
+    ['shapes.py', '+', 'include_zero_area=True,', 'real'],
+  ],
   'joined strings': [
     ['primes.py', '+', 'message = "Found %d primes in %s; the largest checked was %d" % (', 'dim'],
     ['primes.py', '+', 'count,', 'dim'],
