@@ -29,6 +29,7 @@ To change the demo, edit `toys/` or `after/`, run `npm test`, then rebuild the P
 | `primes.py` | new function `nth_prime_fib` | real |
 | `shapes.py` | class docstring rewrapped | dimmed |
 | `shapes.py` | `bounding_box` return wrapped; `largest` signature exploded with a trailing comma | dimmed |
+| `shapes.py` | `report`: call rewrapped one argument per line, with one new argument | dimmed; only `include_zero_area=True,` real |
 | `shapes.py` | `(name,)` → `(name)`, `"a  "` → `"a "` | real |
 | `shapes.py` | `Rectangle` moved to the end, `perimeter` changed | moved, modified |
 | `sorting.py` | `bubble_sort` renamed `sort_bubble` and moved to the end | moved (renamed) |
@@ -37,7 +38,7 @@ To change the demo, edit `toys/` or `after/`, run `npm test`, then rebuild the P
 | `sorting.py` | `print("done")` dedented out of the `if` (nothing else in that hunk) | real |
 | `sorting.py` | `sort_report`: call restructured, arguments re-wrapped | real |
 | `matrix.py` | only reformatted (quotes, wrapping, trailing commas) | whole file auto-viewed, tagged "format" |
-| `epochs.py` | its only change: a one-line docstring rewritten over two lines | dimmed, "comment changes" (not auto-viewed: comments aren't formatting) |
+| `epochs.py` | its only change: a one-line docstring rewritten over two lines | dimmed, "comment changes"; whole file auto-viewed, tagged "comments" |
 | `test_fibonacci.py` | new test | auto-viewed, tagged "auto" |
 
 ## TypeScript

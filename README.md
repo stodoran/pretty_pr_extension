@@ -12,6 +12,10 @@ Functions and classes that moved, even renamed or modified, are tinted and label
 
 ![A moved function labelled in the diff, with the moved-code panel open](docs/screenshots/moved-code.png)
 
+**Compare** shows a modified function's old and new versions side by side, with what changed between them:
+
+![Compare for a moved, modified function: n < 2 changed to n <= 1](docs/screenshots/moved-compare.png)
+
 ### Formatting-only changes
 
 Lines whose only change is formatting fade most of the way back to the page background. That covers whitespace, line wrapping, quote style, trailing commas, optional semicolons, reordered imports and re-indentation caused by a nearby real change. Comment and docstring changes spanning more than one line fade too. Hover one to highlight its section and see why it faded, for example *formatting: indentation* or *comment changes*. If any line of a statement really changed, the whole statement stays highlighted.
@@ -22,7 +26,7 @@ It works from the diff alone, in any language with a language file (see [Languag
 
 ### Auto-viewed files
 
-Files are marked as *Viewed* as they load when they're tests or markdown (tagged **auto**) or when every change in them is formatting (tagged **format**), so you can tell them apart from files you viewed yourself. Un-view one and it's left alone on that PR.
+Files are marked as *Viewed* as they load when they're tests or markdown (tagged **auto**) when every change in them is formatting (tagged **format**), or when every change is formatting or comments and docstrings (tagged **comments**; can be turned off in settings), so you can tell them apart from files you viewed yourself. Un-view one and it's left alone on that PR.
 
 ![A reformatted file tagged "format" and a test file tagged "auto"](docs/screenshots/auto-viewed.png)
 

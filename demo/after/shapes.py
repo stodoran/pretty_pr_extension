@@ -53,6 +53,16 @@ def summary(shape):
     return {"kind": kind, "label": label, "area": round(shape.area(), 2)}
 
 
+def report(shapes, default=None):
+    best = largest(
+        shapes,
+        key_function=None,
+        default_value=default,
+        include_zero_area=True,
+    )
+    return summary(best) if best else None
+
+
 class Rectangle:
     def __init__(self, corner, width, height):
         self.corner = corner

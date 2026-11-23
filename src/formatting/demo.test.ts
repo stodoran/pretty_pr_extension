@@ -75,6 +75,12 @@ const CASES: Record<string, Case[]> = {
     ['shapes.py', '+', 'def largest(', 'dim'],
     ['shapes.py', '+', 'include_zero_area=False,', 'dim'],
   ],
+  'new argument in a rewrapped call: only it is real': [
+    ['shapes.py', '-', 'shapes, key_function=None, default_value=default', 'dim'],
+    ['shapes.py', '+', 'key_function=None,', 'dim'],
+    ['shapes.py', '+', 'default_value=default,', 'dim'],
+    ['shapes.py', '+', 'include_zero_area=True,', 'real'],
+  ],
   'joined strings': [
     ['primes.py', '+', 'message = "Found %d primes in %s; the largest checked was %d" % (', 'dim'],
     ['primes.py', '+', 'count,', 'dim'],
@@ -125,8 +131,10 @@ describe('demo PR', () => {
   it('a file that is only reformatted is entirely formatting', () => {
     expect(result('matrix.py').r.whole).toBe(true);
     for (const p of ['fibonacci.py', 'primes.py', 'shapes.py', 'sorting.py', 'epochs.py']) expect(result(p).r.whole).toBe(false);
-    // Only comment changes: no formatting lines, but still shown.
+    // Only comment changes: no formatting lines, but still shown, and auto-viewed as "comments".
     expect(result('epochs.py').r.formatting).toBe(0);
+    expect(result('epochs.py').r.wholeWithComments).toBe(true);
+    for (const p of ['fibonacci.py', 'primes.py', 'shapes.py', 'sorting.py', 'matrix.py']) expect(result(p).r.wholeWithComments).toBe(false);
     expect(hasMarks(result('epochs.py').r)).toBe(true);
   });
 });

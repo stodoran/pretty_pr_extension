@@ -64,6 +64,26 @@ describe('formatting-only changes', () => {
     expect(r.formatting).toBe(0);
   });
 
+  it('a new argument in a rewrapped call: only the new argument is real (reported case)', () => {
+    const r = classify(
+      'a.py',
+      `def f():\n    return create(\n        root, manifest, ids, is_eval=is_eval, limit=limit\n    )\n`,
+      `def f():\n    return create(\n        root,\n        manifest,\n        ids,\n        is_eval=is_eval,\n        limit=limit,\n        keep_first=split.validate,\n    )\n`,
+    );
+    expect(r.left).toEqual([3]);
+    expect(r.right).toEqual([3, 4, 5, 6, 7]);
+  });
+
+  it('a new parameter in a rewrapped signature: only the new parameter is real (reported case)', () => {
+    const r = classify(
+      'a.py',
+      `def _scan(\n    root: Path, ids: frozenset[str], limit: int | None = None\n) -> P | None:\n    return 1\n`,
+      `def _scan(\n    root: Path,\n    ids: frozenset[str],\n    limit: int | None = None,\n    keep_first: frozenset[str] = frozenset(),\n) -> P | None:\n    return 1\n`,
+    );
+    expect(r.left).toEqual([2]);
+    expect(r.right).toEqual([2, 3, 4]);
+  });
+
   it('code that moved past unchanged lines is not formatting', () => {
     const fn = `def helper(x):\n    y = x + 1\n    return y * 2\n`;
     const r = classify('a.py', `${fn}\n\nA = 1\nB = 2\nC = 3\n`, `A = 1\nB = 2\nC = 3\n\n\n${fn}`);
@@ -105,6 +125,17 @@ describe('formatting-only changes', () => {
     );
     expect(r.left).toEqual([2]);
     expect(r.right).toEqual([3, 5, 6, 8]);
+  });
+
+  it('comments tools act on are real changes, so the file is not auto-viewed', () => {
+    const r = classify('a.py', `import os\nx = f()\ny = 1\n`, `import os  # noqa: F401\nx = f()  # type: ignore\ny = 1\n`);
+    expect(r.left).toEqual([]);
+    expect(r.right).toEqual([]);
+    expect(r.wholeWithComments).toBe(false);
+    const ts = classify('a.ts', `const x = f();\nconst y = 1;\n`, `// @ts-expect-error\nconst x = f();\n// eslint-disable-next-line\nconst y = 1;\n`);
+    expect(ts.wholeWithComments).toBe(false);
+    // An ordinary comment edit still counts.
+    expect(classify('a.py', `x = 1  # old\n`, `x = 1  # new\n`).wholeWithComments).toBe(true);
   });
 
   it('new and deleted files have nothing to mark', () => {

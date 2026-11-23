@@ -40,12 +40,20 @@ export interface FileFormatting {
   /** Changed (added + removed) lines, and how many of them are formatting (comment changes don't count). */
   changed: number;
   formatting: number;
+  /** Changed lines that are comment changes. */
+  comments: number;
   /** Every change in the file is formatting. */
   whole: boolean;
+  /** Not `whole`, but every change is formatting or comments/docstrings. */
+  wholeWithComments: boolean;
 }
 
 /** Whether the file has anything to mark: formatting or comment-only lines, or it's entirely formatting. */
-export const hasMarks = (f: FileFormatting) => f.whole || f.left.length + f.right.length > 0;
+export const hasMarks = (f: FileFormatting) => f.whole || f.wholeWithComments || f.left.length + f.right.length > 0;
+
+/** Comments that tools act on: shebangs, encoding declarations, type-checker, linter and coverage directives. */
+const DIRECTIVE =
+  /^#!|coding[:=]|\btype:\s*\S|\bnoqa\b|\bnosec\b|\bnosemgrep\b|\bpragma\b|\bpylint:|\bmypy:|\bpyright:|\bruff:|\bfmt:\s*(?:off|on|skip)|\bisort:|eslint-|@ts-|prettier-ignore|biome-ignore|\/\/\/\s*<|istanbul\s+ignore|c8\s+ignore|webpack[A-Z]|\bNOLINT|@vite-ignore|@jsx|@flow\b/;
 
 /** Above this many token pairs (after trimming the common prefix) a hunk isn't aligned. */
 const MAX_LCS_CELLS = 4_000_000;
@@ -58,12 +66,14 @@ export function classifyFile(file: DiffFile, registry: Registry = builtinRegistr
   const lang = registry.forPath(path);
   if (!lang?.formatting.enabled) return null;
 
-  const out: FileFormatting = { path, left: [], right: [], blocks: [], changed: 0, formatting: 0, whole: false };
+  const out: FileFormatting = { path, left: [], right: [], blocks: [], changed: 0, formatting: 0, comments: 0, whole: false, wholeWithComments: false };
   let unsure = false;
   for (const h of file.hunks) if (classifyHunk(h, out, lang)) unsure = true;
   // `whole` auto-views the file, so only when nothing else could hide in it:
   // no rename or mode change, and no hunk that needed the docstring guess.
-  out.whole = file.status === 'modified' && !file.modeChange && !unsure && out.changed > 0 && out.formatting === out.changed;
+  const safe = file.status === 'modified' && !file.modeChange && !unsure && out.changed > 0;
+  out.whole = safe && out.formatting === out.changed;
+  out.wholeWithComments = safe && !out.whole && out.formatting + out.comments === out.changed;
   return out;
 }
 
@@ -183,6 +193,11 @@ function classifyHunk(h: Hunk, out: FileFormatting, lang: Language): boolean {
     if (s.imports.has(idx)) return 'imports';
     if (s.reindent.has(idx)) return reindentOk ? 'format' : null;
     if (s.real.has(idx)) return null;
+    // Comments that tools read (type checkers, linters, encodings) change behavior: adding or
+    // removing one is real, on both its line and the line it matched on the other side.
+    const other = s === old ? neu : old;
+    const directive = (x: Side, i: number) => x.comment.has(i) && DIRECTIVE.test(x.lines[i]!.text);
+    if (directive(s, idx) || (s.partners.get(idx) ?? []).some((p) => directive(other, p))) return null;
     return s.comment.has(idx) ? 'comment' : 'format';
   };
   const index = { '-': new Map<number, number>(), '+': new Map<number, number>() };
@@ -215,7 +230,8 @@ function classifyHunk(h: Hunk, out: FileFormatting, lang: Language): boolean {
     const idx = index[l.kind].get(no)!;
     const kind = kindOf(s, idx);
     out.changed++;
-    if (kind && kind !== 'comment') out.formatting++;
+    if (kind === 'comment') out.comments++;
+    else if (kind) out.formatting++;
     // Blank lines count as formatting (for `whole`) but aren't marked: they're invisible anyway.
     if (!l.text.trim()) continue;
     if (!kind) {
@@ -371,8 +387,18 @@ function markLines(s: Side, mine: Int32Array, other: Side, theirs: Int32Array) {
     if (isIndent(t)) return;
     for (let l = t.line; l <= t.endLine; l++) byLine.set(l, [...(byLine.get(l) ?? []), k]);
   });
+  // The comma ending a list element, unmatched because the next element is new
+  // (or was removed): it belongs to that element, not this line.
+  const elements = elementLines(s);
+  const separator = (k: number) => {
+    const t = s.toks[k]!;
+    if (t.key !== ',' || !elements.has(t.line)) return false;
+    let n = k + 1;
+    while (n < s.toks.length && (isLayoutTok(s.toks[n]!) || isCommentTok(s.toks[n]!))) n++;
+    return n < s.toks.length && s.toks[n]!.line > t.line && mine[n]! < 0;
+  };
   for (const [line, ks] of byLine) {
-    if (ks.some((k) => mine[k]! < 0 && !isLayoutTok(s.toks[k]!) && !isCommentTok(s.toks[k]!))) {
+    if (ks.some((k) => mine[k]! < 0 && !isLayoutTok(s.toks[k]!) && !isCommentTok(s.toks[k]!) && !separator(k))) {
       s.real.add(line);
       continue;
     }
@@ -461,7 +487,8 @@ function wholeStatements(old: Side, a: Int32Array, neu: Side, lang: Language) {
   const real = [new Set<number>(), new Set<number>()] as const;
   sides.forEach((s, i) => {
     const g = gs[i]!;
-    for (const l of s.real) if (!s.reindent.has(l) && g[l]! >= 0 && !imports[i]!.has(g[l]!)) real[i]!.add(g[l]!);
+    const own = elementLines(s);
+    for (const l of s.real) if (!s.reindent.has(l) && !own.has(l) && g[l]! >= 0 && !imports[i]!.has(g[l]!)) real[i]!.add(g[l]!);
   });
   for (let changed = true; changed; ) {
     changed = false;
@@ -484,6 +511,35 @@ function wholeStatements(old: Side, a: Int32Array, neu: Side, lang: Language) {
       s.comment.delete(l);
     });
   });
+}
+
+/**
+ * Lines holding only whole elements of a bracketed list opened on an earlier
+ * line (`    keep_first=x,` inside a wrapped call or signature): each argument
+ * stands on its own, so a new or edited one doesn't make its rewrapped
+ * siblings real. Like imports, only the changed element is shown.
+ */
+function elementLines(s: Side): Set<number> {
+  const out = new Set<number>();
+  const code = s.toks.filter((t) => !isLayoutTok(t) && !isCommentTok(t));
+  const opener = (k?: string) => k === '(' || k === '[' || k === '{';
+  const closer = (k?: string) => k === ')' || k === ']' || k === '}';
+  // depth[k]: bracket depth before code[k] (depth[code.length]: at the end).
+  const depth = [0];
+  for (const t of code) depth.push(Math.max(0, depth.at(-1)! + (opener(t.key) ? 1 : closer(t.key) ? -1 : 0)));
+  for (let f = 0; f < code.length; ) {
+    let e = f;
+    while (e + 1 < code.length && code[e + 1]!.line === code[f]!.line) e++;
+    const d = depth[f]!;
+    const prev = code[f - 1]?.key;
+    // Inside a list opened above, starting a new element, never closing that list, ending where it started...
+    let ok = d > 0 && (opener(prev) || prev === ',') && depth[e + 1] === d;
+    for (let k = f + 1; ok && k <= e; k++) if (depth[k]! < d) ok = false;
+    // ...and ending its element: a comma, or the list's closing bracket next.
+    if (ok && (code[e]!.key === ',' || closer(code[e + 1]?.key))) out.add(code[f]!.line);
+    f = e + 1;
+  }
+  return out;
 }
 
 /** LCS alignment of two key sequences; returns each position's partner index on the other side, or -1. */
